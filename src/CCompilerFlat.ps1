@@ -218,32 +218,43 @@ function Invoke-Native([string]$filePath, [string[]]$arguments) {
     $process.StartInfo = $startInfo
     [void]$process.Start()
     $errLines = New-Object System.Collections.Generic.List[string]
-    while (-not $process.HasExited) {
-        if (-not $process.StandardOutput.EndOfStream) {
-            $line = $process.StandardOutput.ReadLine()
-            Add-Log $line
-            if ($line -match 'error|fail|privilege|denied|admin|warning|requier|bloquea') { $errLines.Add($line) }
+    $outTask = $process.StandardOutput.ReadLineAsync()
+    $errTask = $process.StandardError.ReadLineAsync()
+
+    while ($true) {
+        if ($null -ne $outTask) {
+            if ($outTask.IsCompleted) {
+                $line = $outTask.Result
+                if ($null -ne $line) {
+                    if (-not [string]::IsNullOrWhiteSpace($line)) {
+                        Add-Log $line
+                        if ($line -match 'error|fail|privilege|denied|admin|warning|requier|bloquea') { [void]$errLines.Add($line) }
+                    }
+                    $outTask = $process.StandardOutput.ReadLineAsync()
+                } else {
+                    $outTask = $null
+                }
+            }
         }
-        if (-not $process.StandardError.EndOfStream) {
-            $line = $process.StandardError.ReadLine()
-            Add-Log $line
-            $errLines.Add($line)
+        if ($null -ne $errTask) {
+            if ($errTask.IsCompleted) {
+                $errLine = $errTask.Result
+                if ($null -ne $errLine) {
+                    if (-not [string]::IsNullOrWhiteSpace($errLine)) {
+                        Add-Log $errLine
+                        [void]$errLines.Add($errLine)
+                    }
+                    $errTask = $process.StandardError.ReadLineAsync()
+                } else {
+                    $errTask = $null
+                }
+            }
+        }
+        if ($process.HasExited -and ($null -eq $outTask) -and ($null -eq $errTask)) {
+            break
         }
         [System.Windows.Forms.Application]::DoEvents()
-    }
-    $output = $process.StandardOutput.ReadToEnd()
-    if ($output) {
-        Add-Log $output.Trim()
-        foreach ($l in ($output -split "`r?`n")) {
-            if ($l -match 'error|fail|privilege|denied|admin|warning|requier|bloquea') { $errLines.Add($l.Trim()) }
-        }
-    }
-    $errors = $process.StandardError.ReadToEnd()
-    if ($errors) {
-        Add-Log $errors.Trim()
-        foreach ($l in ($errors -split "`r?`n")) {
-            if (-not [string]::IsNullOrWhiteSpace($l)) { $errLines.Add($l.Trim()) }
-        }
+        [System.Threading.Thread]::Sleep(20)
     }
     if ($process.ExitCode -ne 0) {
         $detail = if ($errLines.Count -gt 0) { ($errLines | Select-Object -Last 2) -join ' - ' } else { '' }
