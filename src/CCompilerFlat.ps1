@@ -149,7 +149,7 @@ $menu.ForeColor = $green
 $menu.Font = New-Object System.Drawing.Font('Consolas', 9)
 $installMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Instalar')
 $configMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Configurar proyecto')
-$tutorialMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Tutorial')
+$tutorialMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Ayuda / Tutorial')
 $checkMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Comprobar ejemplos')
 $aboutMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Acerca de')
 $uninstallMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Desinstalar')
@@ -233,6 +233,27 @@ function Write-IfMissing([string]$path, [string]$content) {
         $content | Set-Content -Path $path -Encoding UTF8
         Add-Log "Creado $([System.IO.Path]::GetFileName($path))"
     } else { Add-Log "Conservado $([System.IO.Path]::GetFileName($path))" }
+}
+
+function Get-DiagnosticRecommendation {
+    [CmdletBinding()]
+    param([string]$errorMessage)
+    if ([string]::IsNullOrWhiteSpace($errorMessage)) {
+        return 'Revisa el registro de eventos para mas detalles o consulta el menu Ayuda / Tutorial.'
+    }
+    if ($errorMessage -match 'code\.cmd') {
+        return 'VS Code esta en ejecucion o bloqueando archivos de extensiones. Cierra todas las ventanas de VS Code y reintenta la operacion.'
+    }
+    if ($errorMessage -match 'winget|pacman|download|descarga|internet|conexion|0x80072ee7') {
+        return 'Fallo de red o descarga de paquetes. Comprueba tu conexion a internet, actualiza "App Installer" en la Microsoft Store y autoriza las solicitudes UAC.'
+    }
+    if ($errorMessage -match 'access|denied|acceso denegado|permiso|bloqueado|defender|unauthorized|0x80070005|antivirus|virus') {
+        return 'Windows Defender o tu antivirus bloqueo la accion. Revisa en "Seguridad de Windows > Proteccion contra virus y amenazas > Historial de proteccion" o desactiva temporalmente el "Control de acceso a carpetas".'
+    }
+    if ($errorMessage -match '9009|not found|no se reconoce|no se encontro') {
+        return 'Un comando del sistema o ejecutable no fue encontrado en el PATH. Asegurate de tener VS Code o winget correctamente instalados en Windows.'
+    }
+    return 'Si el problema persiste, ejecuta CCompilerFlat como Administrador (clic derecho > Ejecutar como administrador) o consulta el menu Ayuda / Tutorial.'
 }
 
 function Set-VSCodeConfiguration {
@@ -504,7 +525,7 @@ function Test-Example {
 
 function Show-Tutorial {
     $tutorial = New-Object System.Windows.Forms.Form
-    $tutorial.Text = 'Tutorial del instalador C/C++'
+    $tutorial.Text = 'Ayuda y Tutorial - CCompilerFlat'
     $tutorial.ClientSize = New-Object System.Drawing.Size(760, 570)
     $tutorial.MinimumSize = New-Object System.Drawing.Size(650, 500)
     $tutorial.AutoScaleMode = 'Dpi'
@@ -536,28 +557,47 @@ function Show-Tutorial {
     $tutorialText.Font = New-Object System.Drawing.Font('Consolas', 10)
     $tutorialText.Anchor = 'Top, Bottom, Left, Right'
     $tutorialText.Text = @"
-TUTORIAL: COMPILAR C/C++ EN VS CODE
+GUIA DE USO Y ORIENTACION DE PROBLEMAS - CCOMPILERFLAT
 
-Puedes leer este tutorial sin instalar nada.
+Puedes leer esta guia en cualquier momento sin alterar tu sistema.
 
-1. Para preparar el equipo, pulsa INSTALAR TODO.
-2. Espera a que el registro muestre INSTALACION COMPLETA.
-3. Pulsa ABRIR EJEMPLOS o abre la carpeta ejemplos.
-4. En VS Code, usa Archivo > Abrir carpeta.
-5. Abre 01_hola.c y pulsa Ejecutar y depurar.
-6. Debes ver: Tu compilador funciona correctamente.
-7. Abre 02_calculadora.c y pulsa Ejecutar y depurar.
-8. Escribe una operacion como: 8 * 4
-9. El resultado esperado es: 32.00
-10. Prueba 03_adivina.c: intenta encontrar el numero secreto.
-11. Prueba 04_piedra_papel_tijera.c: usa 0, 1, 2 o -1 para salir.
+PASOS PARA EMPEZAR A PROGRAMAR EN C/C++:
+1. Pulsa [ INSTALAR TODO ] para preparar MSYS2, GCC 16.1 UCRT64, GDB y la extension C/C++.
+2. Espera a que el terminal muestre INSTALACION COMPLETA.
+3. Pulsa [ CONFIGURAR PROYECTO ] si deseas vincular una carpeta distinta (ej. ALGORITMO).
+4. Abre la carpeta de tu proyecto en VS Code (Archivo > Abrir carpeta).
+5. Abre cualquier archivo .c (por ejemplo 01_hola.c) y pulsa Ejecutar y depurar (F5 o Ctrl+F5).
+6. Los ejemplos incluyen retencion de consola interactiva con tecla para evitar cierres repentinos.
 
-La configuracion .vscode se crea automaticamente.
-El archivo C activo se compila junto a su .exe.
-Para depurar, coloca un punto de interrupcion y ejecuta de nuevo.
+======================================================================
+ORIENTACION DE ERRORES COMUNES (POR QUE DIO ERROR Y COMO RESOLVERLO):
+======================================================================
 
-Si Windows muestra una alerta, revisa SECURITY.md.
-No desactives Windows Defender ni crees exclusiones automaticas.
+1. ANTIVIRUS O WINDOWS DEFENDER (Acceso denegado / Permission denied):
+   - Causa: Windows Defender o un antivirus externo bloquea la creacion de binarios .exe,
+     archivos temporales o la instalacion de paquetes en carpetas protegidas.
+   - Solucion: Abre "Seguridad de Windows" > "Proteccion contra virus y amenazas".
+     Si tienes activado "Control de acceso a carpetas", concede permiso a CCompilerFlat
+     y a gcc.exe, o agrega la carpeta de tu proyecto a las exclusiones del antivirus.
+
+2. ARCHIVOS BLOQUEADOS POR VS CODE:
+   - Causa: Al desinstalar o reinstalar extensiones, VS Code mantiene handles abiertos.
+   - Solucion: Cierra todas las ventanas de VS Code antes de reinstalar o desinstalar.
+
+3. PERMISOS DE ADMINISTRADOR (UAC):
+   - Causa: Windows requiere autorizacion elevada para instalar MSYS2 en C:\msys64.
+   - Solucion: Haz clic derecho sobre CCompilerFlat y selecciona "Ejecutar como Administrador".
+
+4. FALLO DE DESCARGA O WINGET NO RESPONDE:
+   - Causa: Red inestable, proxy institucional o la aplicacion winget desactualizada.
+   - Solucion: Abre la Microsoft Store, busca "Instalador de paquetes" (App Installer)
+     y actualizalo. Comprueba que dispones de conexion activa a Internet.
+
+5. EJECUCION DIRECTA DESDE TERMINAL O POWERSHELL:
+   - CCompilerFlat anade C:\msys64\ucrt64\bin a tu variable PATH de usuario.
+   - Puedes compilar manualmente en cualquier terminal:
+       gcc archivo.c -o programa.exe
+       .\programa.exe
 "@
     $tutorial.Controls.Add($tutorialText)
 
@@ -799,9 +839,17 @@ $installButton.Add_Click({
         [System.Windows.Forms.MessageBox]::Show('Instalacion completa. VS Code esta listo.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
         Update-InstallationControl
     } catch {
-        Add-Log ('ERROR: ' + $_.Exception.Message)
-        $statusLabel.Text = 'Estado: error; revisa el registro'
-        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Error de instalacion', 'OK', 'Error') | Out-Null
+        $msg = $_.Exception.Message
+        $advice = Get-DiagnosticRecommendation -errorMessage $msg
+        Add-Log ('ERROR: ' + $msg)
+        Add-Log ('DIAGNOSTICO: ' + $advice)
+        $statusLabel.Text = 'Estado: error; revisa el registro y diagnostico'
+        [System.Windows.Forms.MessageBox]::Show(
+            "ERROR EN LA INSTALACION:`r`n$msg`r`n`r`nDIAGNOSTICO / ORIENTACION:`r`n$advice`r`n`r`n(Consulta el menu 'Ayuda / Tutorial' para mas orientacion)",
+            'Error de instalacion - CCompilerFlat',
+            'OK',
+            'Error'
+        ) | Out-Null
     }
     $installButton.Enabled = $true
 })
@@ -814,7 +862,18 @@ $uninstallMenu.Add_Click({ $uninstallButton.PerformClick() })
 $tutorialMenu.Add_Click({ Show-Tutorial })
 $checkMenu.Add_Click({
     try { Initialize-Example; Test-Example }
-    catch { Add-Log ('ERROR: ' + $_.Exception.Message); [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Comprobar ejemplos', 'OK', 'Error') | Out-Null }
+    catch {
+        $msg = $_.Exception.Message
+        $advice = Get-DiagnosticRecommendation -errorMessage $msg
+        Add-Log ('ERROR: ' + $msg)
+        Add-Log ('DIAGNOSTICO: ' + $advice)
+        [System.Windows.Forms.MessageBox]::Show(
+            "ERROR AL COMPROBAR EJEMPLOS:`r`n$msg`r`n`r`nDIAGNOSTICO / ORIENTACION:`r`n$advice",
+            'Comprobar ejemplos',
+            'OK',
+            'Error'
+        ) | Out-Null
+    }
 })
 $aboutMenu.Add_Click({ Show-About })
 $uninstallButton.Add_Click({
@@ -857,7 +916,19 @@ $uninstallButton.Add_Click({
         Add-Log 'DESINSTALACION COMPLETA.'
         [System.Windows.Forms.MessageBox]::Show('Herramientas eliminadas.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
         Update-InstallationControl
-    } catch { Add-Log ('ERROR: ' + $_.Exception.Message) }
+    } catch {
+        $msg = $_.Exception.Message
+        $advice = Get-DiagnosticRecommendation -errorMessage $msg
+        Add-Log ('ERROR: ' + $msg)
+        Add-Log ('DIAGNOSTICO: ' + $advice)
+        $statusLabel.Text = 'Estado: error en desinstalacion'
+        [System.Windows.Forms.MessageBox]::Show(
+            "ERROR EN LA DESINSTALACION:`r`n$msg`r`n`r`nDIAGNOSTICO / ORIENTACION:`r`n$advice",
+            'Error de desinstalacion - CCompilerFlat',
+            'OK',
+            'Error'
+        ) | Out-Null
+    }
     $installButton.Enabled = $true
     $uninstallButton.Enabled = $true
 })

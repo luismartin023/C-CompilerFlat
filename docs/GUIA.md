@@ -16,16 +16,24 @@ Tambien puedes usar `Ctrl+Shift+B` para ejecutar la tarea de compilacion. La sal
 
 ## Probar los ejemplos
 
-La carpeta `ejemplos/` contiene cuatro archivos:
+La carpeta `ejemplos/` contiene cuatro archivos interactivos:
 
 - `01_hola.c`: confirma que GCC compila y ejecuta correctamente.
-- `02_calculadora.c`: prueba suma, resta, multiplicacion y division.
+- `02_calculadora.c`: prueba operaciones aritmeticas con validacion de entrada.
 - `03_adivina.c`: juego para encontrar un numero secreto.
 - `04_piedra_papel_tijera.c`: juego repetible contra la computadora.
 
-Abre uno de ellos en VS Code y pulsa **Ejecutar y depurar**. La app tambien ofrece el tutorial desde el menu **Tutorial**.
+**Retencion de consola**: Todos los ejemplos incluyen `system("pause")` y limpieza de bufer de teclado (`getchar()`), garantizando que la ventana de la consola permanezca abierta hasta que el usuario pulse una tecla, evitando cierres instantaneos.
 
-Tambien puedes usar **Comprobar ejemplos** en el menu del instalador. Esa opcion valida los cuatro archivos con GCC sin crear ejecutables. La compilacion y ejecucion normal se hacen desde VS Code.
+Abre cualquiera de ellos en VS Code y pulsa **Ejecutar y depurar** (F5 o Ctrl+F5). La app tambien ofrece documentacion y solucion de problemas desde el menu **Ayuda / Tutorial**.
+
+Tambien puedes usar **Comprobar ejemplos** en el menu del instalador para validar los cuatro archivos con GCC.
+
+## Configurar cualquier proyecto
+
+CCompilerFlat separa la instalacion del compilador de la configuracion de proyectos:
+- Si abres una carpeta de trabajo distinta (por ejemplo la carpeta `ALGORITMO` o cualquier proyecto nuevo), usa el boton **[ CONFIGURAR PROYECTO ]** o el menu **Configurar proyecto**.
+- Un selector interactivo te permite elegir la carpeta donde inyectar `.vscode` (`tasks.json`, `launch.json`, `c_cpp_properties.json`).
 
 ## Depurar
 
@@ -33,24 +41,32 @@ Coloca un punto de interrupcion haciendo clic junto al numero de linea y pulsa *
 
 ## Desinstalar
 
-Desde el menu **Desinstalar**, confirma la operacion. El instalador retira MSYS2, GCC, GDB y la extension de C/C++. No elimina tus archivos fuente.
+Desde el boton **[ DESINSTALAR ]** o menu **Desinstalar**:
+1. El sistema solicita confirmacion para retirar MSYS2, GCC, GDB y la extension de C/C++.
+2. Pregunta de forma independiente si deseas eliminar la configuracion de VS Code (`.vscode`) o conservarla intacta.
+3. El instalador nunca elimina tus archivos de codigo fuente ni carpetas del repositorio.
 
-El apartado **Acerca de** contiene la identidad del proyecto y los enlaces de contacto.
+El apartado **Acerca de** contiene la identidad del proyecto y los enlaces de contacto de MKZ Company.
 
-## Problemas comunes
+## Diagnostico inteligente de errores y soluciones
 
-Si VS Code no reconoce la configuracion, abre la carpeta del proyecto que contiene `.vscode` y ejecuta **Developer: Reload Window**. Si `winget` no existe, actualiza Windows App Installer desde Microsoft Store.
+CCompilerFlat integra un analizador de diagnostico que evalua cualquier fallo y orienta al usuario en el registro de la aplicacion y en ventanas emergentes:
 
-## Errores y soluciones
-
-- **GCC no esta instalado**: ejecuta **Instalar** y acepta la confirmacion. La app comprobara los ejemplos al finalizar.
-- **No se encuentra `gcc.exe`**: comprueba que exista `C:\msys64\ucrt64\bin\gcc.exe` y vuelve a abrir VS Code.
-- **GCC termina sin mostrar el motivo**: normalmente faltan las rutas UCRT64 para sus DLL. CCompilerFlat las configura localmente en la tarea y en la depuracion; no cambia el `PATH` global.
-- **El programa no inicia**: guarda el archivo `.c` y usa **Ejecutar y depurar** para que la tarea lo compile antes de abrirlo.
-- **La consola muestra un error de compilacion**: la tarea oculta el comando, pero muestra el diagnostico. Revisa la linea indicada en el archivo C.
-- **La ventana se cierra al terminar**: es normal cuando el programa termina; usa una entrada interactiva o depura con un punto de interrupcion para observarlo.
-- **No hay salida visible**: selecciona el perfil `Ejecutar archivo C actual` en la vista de depuracion.
-- **La instalacion requiere permisos**: Windows puede solicitar autorizacion para instalar MSYS2. La app no eleva permisos por su cuenta ni modifica el `PATH` global.
-- **Se rechazo UAC**: vuelve a pulsar **Instalar** y acepta la ventana de Windows, o ejecuta la app en una cuenta con permiso para instalar programas.
-- **Winget no responde**: abre Microsoft Store, actualiza **App Installer** y vuelve a ejecutar **Comprobar ejemplos**.
-- **Defender muestra una alerta**: revisa el codigo y la procedencia del repositorio. No desactives Defender ni agregues exclusiones automaticas.
+- **Antivirus o Windows Defender (`Acceso denegado`, `Permission denied`, `0x80070005`)**:
+  - *Causa*: Windows Defender o un antivirus de terceros bloquea la creacion o ejecucion de archivos binarios `.exe` o el acceso a carpetas protegidas.
+  - *Solucion*: Abre **Seguridad de Windows > Proteccion contra virus y amenazas > Historial de proteccion**. Si tienes activo el "Control de acceso a carpetas", concede permiso a `CCompilerFlat` y a `gcc.exe`, o anade la carpeta de tu proyecto a las exclusiones del antivirus.
+- **Archivos bloqueados por VS Code**:
+  - *Causa*: Si VS Code esta abierto durante la instalacion o desinstalacion de extensiones, Windows bloquea los ejecutables y archivos temporales.
+  - *Solucion*: Cierra todas las instancias de VS Code y reintenta la operacion en CCompilerFlat.
+- **Permisos de Administrador (UAC)**:
+  - *Causa*: La instalacion de MSYS2 en `C:\msys64` requiere permisos elevados de Windows.
+  - *Solucion*: Haz clic derecho sobre `CCompilerFlat.bat` o el script y selecciona **Ejecutar como Administrador**.
+- **Fallo de red o `winget` no responde**:
+  - *Causa*: Problemas de conexion o la version de `winget` requiere actualizacion.
+  - *Solucion*: Abre Microsoft Store, busca y actualiza **Instalador de paquetes (App Installer)** y comprueba tu acceso a internet.
+- **Uso global en terminal**:
+  - CCompilerFlat anade `C:\msys64\ucrt64\bin` a la variable `PATH` de usuario en Windows. Puedes compilar manualmente en PowerShell o CMD desde cualquier ruta:
+    ```bash
+    gcc archivo.c -o programa.exe
+    .\programa.exe
+    ```
