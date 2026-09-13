@@ -579,8 +579,37 @@ function Remove-GeneratedVSCodeFile {
     }
 }
 
+function Get-InstallationState {
+    $vsCodeCommand = Get-Command code.cmd -ErrorAction SilentlyContinue
+    $extensionInstalled = $false
+    if ($vsCodeCommand) {
+        $extensionInstalled = @(& $vsCodeCommand.Source '--list-extensions' 2>$null) -contains 'ms-vscode.cpptools'
+    }
+    $configurationReady = @('tasks.json', 'launch.json', 'c_cpp_properties.json' | ForEach-Object {
+        Test-Path (Join-Path (Join-Path $projectDir '.vscode') $_)
+    }) -notcontains $false
+    [pscustomobject]@{
+        Msys2 = Test-Path $bashPath
+        Gcc = Test-Path $gccPath
+        Gdb = Test-Path $gdbPath
+        VsCode = [bool]$vsCodeCommand
+        Extension = $extensionInstalled
+        Configuration = $configurationReady
+    }
+}
+
 $installButton.Add_Click({
-    $answer = [System.Windows.Forms.MessageBox]::Show('Se instalaran MSYS2, GCC, GDB y la configuracion de VS Code. Deseas continuar?', 'Confirmar instalacion', 'YesNo', 'Question')
+    $state = Get-InstallationState
+    $missing = @()
+    if (-not $state.Msys2) { $missing += 'MSYS2' }
+    if (-not $state.Gcc) { $missing += 'GCC' }
+    if (-not $state.Gdb) { $missing += 'GDB' }
+    if (-not $state.VsCode) { $missing += 'VS Code no detectado' }
+    if ($state.VsCode -and -not $state.Extension) { $missing += 'extension C/C++' }
+    if (-not $state.Configuration) { $missing += 'configuracion de VS Code' }
+    $stateText = "MSYS2: $($state.Msys2)`r`nGCC: $($state.Gcc)`r`nGDB: $($state.Gdb)`r`nVS Code: $($state.VsCode)`r`nExtension: $($state.Extension)`r`nConfiguracion: $($state.Configuration)"
+    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado. Solo se validara la configuracion y los ejemplos.' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
+    $answer = [System.Windows.Forms.MessageBox]::Show("$stateText`r`n`r`n$actionText`r`n`r`nDeseas continuar?", 'Revision previa de CCompilerFlat', 'YesNo', 'Question')
     if ($answer -ne 'Yes') { return }
     $installButton.Enabled = $false
     Set-InstallerProgress 0 'preparando instalacion'
@@ -588,19 +617,24 @@ $installButton.Add_Click({
         Add-Log 'Iniciando instalacion...'
         if (Test-Administrator) { Add-Log 'Sesión elevada: administrador.' }
         else { Add-Log 'Sesión estándar: Windows puede solicitar UAC a winget.' }
-        if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) { throw 'winget no esta disponible en este Windows.' }
-        Set-InstallerProgress 10 'comprobando winget'
-        Add-Log "winget: $(& winget.exe --version)"
-        Invoke-Native 'winget.exe' @('install', '--id', 'MSYS2.MSYS2', '-e', '--accept-source-agreements', '--accept-package-agreements')
+        if (-not $state.Msys2) {
+            if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) { throw 'winget no esta disponible en este Windows.' }
+            Set-InstallerProgress 10 'comprobando winget'
+            Add-Log "winget: $(& winget.exe --version)"
+            Invoke-Native 'winget.exe' @('install', '--id', 'MSYS2.MSYS2', '-e', '--accept-source-agreements', '--accept-package-agreements')
+        } else { Add-Log 'MSYS2 ya esta instalado; no se sobrescribe.' }
         Set-InstallerProgress 35 'instalando MSYS2'
         if (-not (Test-Path $bashPath)) { throw "MSYS2 no se encontro en $msysRoot." }
-        Invoke-Native $bashPath @('-lc', 'pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gdb')
+        if (-not $state.Gcc -or -not $state.Gdb) {
+            Invoke-Native $bashPath @('-lc', 'pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gdb')
+        } else { Add-Log 'GCC y GDB ya estan instalados; no se reinstalan.' }
         Set-InstallerProgress 60 'instalando GCC y GDB'
         Set-VSCodeConfiguration
         Initialize-Example
         Test-Example
         Set-InstallerProgress 80 'comprobando ejemplos y VS Code'
-        if (Get-Command code.cmd -ErrorAction SilentlyContinue) { Invoke-Native 'code.cmd' @('--install-extension', 'ms-vscode.cpptools', '--force') }
+        if ($state.VsCode -and -not $state.Extension) { Invoke-Native 'code.cmd' @('--install-extension', 'ms-vscode.cpptools', '--force') }
+        elseif ($state.Extension) { Add-Log 'La extension C/C++ ya esta instalada; no se reinstala.' }
         else { Add-Log 'VS Code no esta en PATH; la configuracion se creo, pero la extension debe instalarse desde VS Code.' }
         Set-InstallerProgress 100 'instalacion completa'
         Add-Log 'INSTALACION COMPLETA. VS Code esta listo.'
