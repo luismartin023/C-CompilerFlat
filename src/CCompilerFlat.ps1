@@ -92,6 +92,8 @@ function New-ActionButton {
     $button.Size = New-Object System.Drawing.Size($width, 42)
     $button.FlatStyle = 'Flat'
     $button.FlatAppearance.BorderColor = $green
+    $button.FlatAppearance.MouseOverBackColor = [System.Drawing.Color]::FromArgb(0, 110, 55)
+    $button.FlatAppearance.MouseDownBackColor = [System.Drawing.Color]::FromArgb(0, 210, 90)
     $button.ForeColor = $green
     $button.BackColor = [System.Drawing.Color]::FromArgb(5, 35, 18)
     $button.Anchor = 'Bottom, Left'
@@ -106,6 +108,8 @@ $closeButton.Anchor = 'Bottom, Right'
 $uninstallButton = New-ActionButton '[ DESINSTALAR ]' 666 140
 $uninstallButton.Anchor = 'Bottom, Right'
 $uninstallButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(180, 60, 60)
+$uninstallButton.FlatAppearance.MouseOverBackColor = [System.Drawing.Color]::FromArgb(110, 25, 25)
+$uninstallButton.FlatAppearance.MouseDownBackColor = [System.Drawing.Color]::FromArgb(220, 70, 70)
 $uninstallButton.ForeColor = [System.Drawing.Color]::FromArgb(255, 110, 110)
 $uninstallButton.BackColor = [System.Drawing.Color]::FromArgb(45, 10, 10)
 
@@ -119,6 +123,19 @@ $tutorialMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Tutorial')
 $checkMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Comprobar ejemplos')
 $aboutMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Acerca de')
 [void]$menu.Items.AddRange(@($installMenu, $uninstallMenu, $tutorialMenu, $checkMenu, $aboutMenu))
+$menuItems = @($installMenu, $uninstallMenu, $tutorialMenu, $checkMenu, $aboutMenu)
+foreach ($menuItem in $menuItems) {
+    $menuItem.BackColor = [System.Drawing.Color]::FromArgb(5, 25, 14)
+    $menuItem.ForeColor = $green
+    $menuItem.Add_MouseEnter({
+        $this.BackColor = $green
+        $this.ForeColor = $black
+    })
+    $menuItem.Add_MouseLeave({
+        $this.BackColor = [System.Drawing.Color]::FromArgb(5, 25, 14)
+        $this.ForeColor = $green
+    })
+}
 $form.MainMenuStrip = $menu
 $form.Controls.Add($menu)
 
