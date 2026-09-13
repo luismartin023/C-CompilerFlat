@@ -1,4 +1,4 @@
-Add-Type -AssemblyName System.Windows.Forms
+﻿Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -54,7 +54,7 @@ $form.Controls.Add($subtitle)
 
 $log = New-Object System.Windows.Forms.TextBox
 $log.Location = New-Object System.Drawing.Point(32, 125)
-$log.Size = New-Object System.Drawing.Size(780, 315)
+$log.Size = New-Object System.Drawing.Size(780, 295)
 $log.Multiline = $true
 $log.ReadOnly = $true
 $log.ScrollBars = 'Vertical'
@@ -63,6 +63,24 @@ $log.ForeColor = $green
 $log.Font = New-Object System.Drawing.Font('Consolas', 10)
 $log.Anchor = 'Top, Bottom, Left, Right'
 $form.Controls.Add($log)
+
+$statusLabel = New-Object System.Windows.Forms.Label
+$statusLabel.Text = 'Estado: listo'
+$statusLabel.Location = New-Object System.Drawing.Point(34, 430)
+$statusLabel.Size = New-Object System.Drawing.Size(780, 18)
+$statusLabel.ForeColor = $green
+$statusLabel.Anchor = 'Bottom, Left, Right'
+$form.Controls.Add($statusLabel)
+
+$progressBar = New-Object System.Windows.Forms.ProgressBar
+$progressBar.Location = New-Object System.Drawing.Point(32, 447)
+$progressBar.Size = New-Object System.Drawing.Size(780, 8)
+$progressBar.Minimum = 0
+$progressBar.Maximum = 100
+$progressBar.Value = 0
+$progressBar.Style = 'Continuous'
+$progressBar.Anchor = 'Bottom, Left, Right'
+$form.Controls.Add($progressBar)
 
 function New-ActionButton {
     [CmdletBinding(SupportsShouldProcess)]
@@ -118,6 +136,21 @@ function Add-Log([string]$message) {
     $log.SelectionStart = $log.TextLength
     $log.ScrollToCaret()
     [System.Windows.Forms.Application]::DoEvents()
+}
+
+function Set-InstallerProgress {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([int]$value, [string]$message)
+    if (-not $PSCmdlet.ShouldProcess('barra de progreso', 'Actualizar estado')) { return }
+    $progressBar.Value = [Math]::Max(0, [Math]::Min(100, $value))
+    $statusLabel.Text = "Estado: $message ($($progressBar.Value)%)"
+    [System.Windows.Forms.Application]::DoEvents()
+}
+
+function Test-Administrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
 function Invoke-Native([string]$filePath, [string[]]$arguments) {
@@ -446,21 +479,32 @@ $installButton.Add_Click({
     $answer = [System.Windows.Forms.MessageBox]::Show('Se instalaran MSYS2, GCC, GDB y la configuracion de VS Code. Deseas continuar?', 'Confirmar instalacion', 'YesNo', 'Question')
     if ($answer -ne 'Yes') { return }
     $installButton.Enabled = $false
+    Set-InstallerProgress 0 'preparando instalacion'
     try {
         Add-Log 'Iniciando instalacion...'
+        if (Test-Administrator) { Add-Log 'Sesión elevada: administrador.' }
+        else { Add-Log 'Sesión estándar: Windows puede solicitar UAC a winget.' }
         if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) { throw 'winget no esta disponible en este Windows.' }
+        Set-InstallerProgress 10 'comprobando winget'
+        Add-Log "winget: $(& winget.exe --version)"
         Invoke-Native 'winget.exe' @('install', '--id', 'MSYS2.MSYS2', '-e', '--accept-source-agreements', '--accept-package-agreements')
+        Set-InstallerProgress 35 'instalando MSYS2'
         if (-not (Test-Path $bashPath)) { throw "MSYS2 no se encontro en $msysRoot." }
         Invoke-Native $bashPath @('-lc', 'pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gdb')
+        Set-InstallerProgress 60 'instalando GCC y GDB'
         Set-VSCodeConfiguration
         Initialize-Example
         Test-Example
+        Set-InstallerProgress 80 'comprobando ejemplos y VS Code'
         if (Get-Command code.cmd -ErrorAction SilentlyContinue) { Invoke-Native 'code.cmd' @('--install-extension', 'ms-vscode.cpptools', '--force') }
+        else { Add-Log 'VS Code no esta en PATH; la configuracion se creo, pero la extension debe instalarse desde VS Code.' }
+        Set-InstallerProgress 100 'instalacion completa'
         Add-Log 'INSTALACION COMPLETA. VS Code esta listo.'
         [System.Windows.Forms.MessageBox]::Show('Instalacion completa. VS Code esta listo.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
         Show-Tutorial
     } catch {
         Add-Log ('ERROR: ' + $_.Exception.Message)
+        $statusLabel.Text = 'Estado: error; revisa el registro'
         [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Error de instalacion', 'OK', 'Error') | Out-Null
     }
     $installButton.Enabled = $true
@@ -481,11 +525,15 @@ $uninstallButton.Add_Click({
     if ($answer -ne 'Yes') { return }
     $installButton.Enabled = $false
     $uninstallButton.Enabled = $false
+    Set-InstallerProgress 0 'preparando desinstalacion'
     try {
         Add-Log 'Iniciando desinstalacion...'
         if (Get-Command code.cmd -ErrorAction SilentlyContinue) { Invoke-Native 'code.cmd' @('--uninstall-extension', 'ms-vscode.cpptools', '--force') }
+        Set-InstallerProgress 40 'retirando extension de VS Code'
         if (Get-Command winget.exe -ErrorAction SilentlyContinue) { Invoke-Native 'winget.exe' @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--silent', '--accept-source-agreements') }
+        Set-InstallerProgress 80 'retirando MSYS2'
         Remove-GeneratedVSCodeFile
+        Set-InstallerProgress 100 'desinstalacion completa'
         Add-Log 'DESINSTALACION COMPLETA.'
         [System.Windows.Forms.MessageBox]::Show('Herramientas eliminadas.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
     } catch { Add-Log ('ERROR: ' + $_.Exception.Message) }
@@ -511,6 +559,8 @@ $menu.BringToFront()
 $header.BringToFront()
 $subtitle.BringToFront()
 $log.BringToFront()
+$statusLabel.BringToFront()
+$progressBar.BringToFront()
 $installButton.BringToFront()
 $openButton.BringToFront()
 $closeButton.BringToFront()

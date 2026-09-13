@@ -4,6 +4,8 @@
 
 Ejecuta `CCompilerFlat.bat` y selecciona **Instalar**. La app instala el compilador y crea la configuracion local de VS Code sin cambiar el `PATH` global.
 
+La app muestra el progreso de instalacion del 0% al 100%. Si la sesion no es de administrador, `winget` puede mostrar una solicitud de UAC; debes aceptarla para instalar MSYS2 en su ubicacion predeterminada. La app no eleva permisos silenciosamente.
+
 Antes de abrir la app puedes ejecutar `Preparar-CCompilerFlat.bat`. Ese archivo instala PSScriptAnalyzer para revisar `src\CCompilerFlat.ps1`, muestra cualquier warning y abre la app solo cuando el analisis esta limpio. No es obligatorio para usuarios finales.
 
 Para una prueba completa sin abrir la interfaz, ejecuta `Verificar-CCompilerFlat.bat`. Comprueba archivos, sintaxis, PSScriptAnalyzer y compilacion de los cuatro ejemplos.
@@ -51,4 +53,6 @@ Si VS Code no reconoce la configuracion, abre la carpeta del proyecto que contie
 - **La ventana se cierra al terminar**: es normal cuando el programa termina; usa una entrada interactiva o depura con un punto de interrupcion para observarlo.
 - **No hay salida visible**: selecciona el perfil `Ejecutar archivo C actual` en la vista de depuracion.
 - **La instalacion requiere permisos**: Windows puede solicitar autorizacion para instalar MSYS2. La app no eleva permisos por su cuenta ni modifica el `PATH` global.
+- **Se rechazo UAC**: vuelve a pulsar **Instalar** y acepta la ventana de Windows, o ejecuta la app en una cuenta con permiso para instalar programas.
+- **Winget no responde**: abre Microsoft Store, actualiza **App Installer** y vuelve a ejecutar **Comprobar ejemplos**.
 - **Defender muestra una alerta**: revisa el codigo y la procedencia del repositorio. No desactives Defender ni agregues exclusiones automaticas.

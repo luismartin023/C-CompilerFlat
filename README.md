@@ -41,6 +41,8 @@ Hay tres accesos intencionales en la raiz: `CCompilerFlat.bat` para usar la app,
 
 La instalacion puede pedir permisos de Windows para instalar MSYS2. El script no modifica el `PATH` del sistema.
 
+CCompilerFlat no obliga a ejecutar toda la aplicación como administrador. En una cuenta estándar, `winget` muestra UAC solo si Windows necesita elevar la instalación; si el usuario rechaza UAC, la app informa el motivo y no continúa como si hubiera terminado correctamente.
+
 PSScriptAnalyzer es una herramienta opcional de desarrollo; no es necesaria para ejecutar el instalador. `Preparar-CCompilerFlat.bat` la instala en el perfil del usuario, analiza `src\CCompilerFlat.ps1` y no eleva permisos por su cuenta.
 
 La configuracion de VS Code incorpora temporalmente `C:\msys64\ucrt64\bin` y `C:\msys64\usr\bin` solo para compilar y depurar, de modo que GCC encuentre sus DLL sin cambiar las variables globales de Windows.
