@@ -38,7 +38,7 @@ C-CompilerFlat/
 `- SECURITY.md
 ```
 
-Hay tres accesos intencionales en la raiz: `CCompilerFlat.bat` para usar la app, `Preparar-CCompilerFlat.bat` para analizar y abrir la app, y `Verificar-CCompilerFlat.bat` para ejecutar todas las comprobaciones sin abrir la interfaz. El script de la app vive en `src/` y no se duplica.
+Hay dos flujos intencionales en la raiz: `CCompilerFlat.bat` para usar la app y `Verificar-CCompilerFlat.bat` para ejecutar todas las comprobaciones. `Preparar-CCompilerFlat.bat` se conserva como alias compatible: ejecuta la misma verificacion y abre la app si todo pasa. El script de la app vive en `src/` y no se duplica.
 
 La instalacion puede pedir permisos de Windows para instalar MSYS2. El script no modifica el `PATH` del sistema.
 
