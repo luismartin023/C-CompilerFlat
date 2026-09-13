@@ -20,6 +20,21 @@ $darkGreen = [System.Drawing.Color]::FromArgb(0, 90, 45)
 $black = [System.Drawing.Color]::FromArgb(3, 8, 6)
 $font = New-Object System.Drawing.Font('Consolas', 10)
 
+function Set-WindowBranding {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([System.Windows.Forms.Form]$window)
+    if (-not $window -or -not (Test-Path $logoPath)) { return }
+    if (-not $PSCmdlet.ShouldProcess($window.Text, 'Aplicar identidad visual')) { return }
+    $iconSource = [System.Drawing.Image]::FromFile($logoPath)
+    $iconBitmap = New-Object System.Drawing.Bitmap(32, 32)
+    $iconGraphics = [System.Drawing.Graphics]::FromImage($iconBitmap)
+    $iconGraphics.DrawImage($iconSource, 0, 0, 32, 32)
+    $window.Icon = [System.Drawing.Icon]::FromHandle($iconBitmap.GetHicon())
+    $iconGraphics.Dispose()
+    $iconBitmap.Dispose()
+    $iconSource.Dispose()
+}
+
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'CCompilerFlat - Instalador C/C++'
 $form.ClientSize = New-Object System.Drawing.Size(850, 560)
@@ -29,17 +44,7 @@ $form.StartPosition = 'CenterScreen'
 $form.BackColor = $black
 $form.ForeColor = $green
 $form.Font = $font
-
-if (Test-Path $logoPath) {
-    $iconSource = [System.Drawing.Image]::FromFile($logoPath)
-    $iconBitmap = New-Object System.Drawing.Bitmap(32, 32)
-    $iconGraphics = [System.Drawing.Graphics]::FromImage($iconBitmap)
-    $iconGraphics.DrawImage($iconSource, 0, 0, 32, 32)
-    $form.Icon = [System.Drawing.Icon]::FromHandle($iconBitmap.GetHicon())
-    $iconGraphics.Dispose()
-    $iconBitmap.Dispose()
-    $iconSource.Dispose()
-}
+Set-WindowBranding $form
 
 $rainPanel = New-Object System.Windows.Forms.Panel
 $rainPanel.Dock = 'Fill'
@@ -397,13 +402,25 @@ function Show-Tutorial {
     $tutorial.BackColor = $black
     $tutorial.ForeColor = $green
     $tutorial.Font = $font
+    Set-WindowBranding $tutorial
+
+    if (Test-Path $logoPath) {
+        $tutorialLogo = New-Object System.Windows.Forms.PictureBox
+        $tutorialLogo.Location = New-Object System.Drawing.Point(620, 20)
+        $tutorialLogo.Size = New-Object System.Drawing.Size(100, 100)
+        $tutorialLogo.SizeMode = 'Zoom'
+        $tutorialLogo.BackColor = [System.Drawing.Color]::Transparent
+        $tutorialLogo.Image = [System.Drawing.Image]::FromFile($logoPath)
+        $tutorialLogo.Anchor = 'Top, Right'
+        $tutorial.Controls.Add($tutorialLogo)
+    }
 
     $tutorialText = New-Object System.Windows.Forms.TextBox
     $tutorialText.Multiline = $true
     $tutorialText.ReadOnly = $true
     $tutorialText.ScrollBars = 'Vertical'
-    $tutorialText.Location = New-Object System.Drawing.Point(24, 22)
-    $tutorialText.Size = New-Object System.Drawing.Size(695, 415)
+    $tutorialText.Location = New-Object System.Drawing.Point(24, 125)
+    $tutorialText.Size = New-Object System.Drawing.Size(695, 312)
     $tutorialText.BackColor = [System.Drawing.Color]::FromArgb(2, 14, 8)
     $tutorialText.ForeColor = $green
     $tutorialText.Font = New-Object System.Drawing.Font('Consolas', 10)
@@ -479,6 +496,7 @@ function Show-About {
     $about.BackColor = $black
     $about.ForeColor = $green
     $about.Font = $font
+    Set-WindowBranding $about
     $aboutTitle = New-Object System.Windows.Forms.Label
     $aboutTitle.Text = 'CCompilerFlat by LuisMartinPM'
     $aboutTitle.Location = New-Object System.Drawing.Point(28, 24)
