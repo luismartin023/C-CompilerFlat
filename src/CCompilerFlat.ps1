@@ -129,11 +129,10 @@ function New-ActionButton {
     return $button
 }
 
-$installButton = New-ActionButton '[ INSTALAR TODO ]' 32 250
-$openButton = New-ActionButton '[ ABRIR PROYECTO ]' 300 190
-$closeButton = New-ActionButton '[ SALIR ]' 508 140
-$closeButton.Anchor = 'Bottom, Right'
-$uninstallButton = New-ActionButton '[ DESINSTALAR ]' 666 140
+$installButton = New-ActionButton '[ INSTALAR TODO ]' 32 175
+$configButton = New-ActionButton '[ CONFIGURAR PROYECTO ]' 215 195
+$openButton = New-ActionButton '[ ABRIR PROYECTO ]' 418 155
+$uninstallButton = New-ActionButton '[ DESINSTALAR ]' 581 135
 $uninstallButton.Anchor = 'Bottom, Right'
 $uninstallButton.Visible = $false
 $uninstallButton.Enabled = $false
@@ -142,6 +141,8 @@ $uninstallButton.FlatAppearance.MouseOverBackColor = [System.Drawing.Color]::Fro
 $uninstallButton.FlatAppearance.MouseDownBackColor = [System.Drawing.Color]::FromArgb(220, 70, 70)
 $uninstallButton.ForeColor = [System.Drawing.Color]::FromArgb(255, 110, 110)
 $uninstallButton.BackColor = [System.Drawing.Color]::FromArgb(45, 10, 10)
+$closeButton = New-ActionButton '[ SALIR ]' 724 88
+$closeButton.Anchor = 'Bottom, Right'
 
 $menu = New-Object System.Windows.Forms.MenuStrip
 $menu.BackColor = [System.Drawing.Color]::FromArgb(5, 25, 14)
@@ -802,9 +803,9 @@ function Update-InstallationControl {
         $configLoc = if ($state.LocalConfiguration) { 'proyecto actual' } elseif ($state.ParentConfiguration) { 'carpeta padre' } else { 'externa' }
         $statusLabel.Text = "Estado: entorno completo; GCC 16.1 y VS Code listos ($configLoc)"
     } elseif ($state.CompilerReady) {
-        $installButton.Text = '[ CONFIGURAR PROYECTO ]'
-        $installMenu.Text = 'Configurar proyecto'
-        $statusLabel.Text = 'Estado: GCC y GDB listos; pulsa para elegir carpeta de proyecto'
+        $installButton.Text = '[ ANALIZAR ESTADO ]'
+        $installMenu.Text = 'Analizar estado'
+        $statusLabel.Text = 'Estado: GCC y GDB listos; usa [ CONFIGURAR PROYECTO ] para vincular carpetas'
     } elseif ($compilerInstalled) {
         $installButton.Text = '[ REPARAR INSTALACION ]'
         $installMenu.Text = 'Reparar instalacion'
@@ -818,10 +819,6 @@ function Update-InstallationControl {
 
 $installButton.Add_Click({
     $state = Get-InstallationState
-    if ($state.CompilerReady -and -not $state.Configuration) {
-        Select-ProjectFolderAndConfigure
-        return
-    }
     $missing = @()
     if (-not $state.Msys2) { $missing += 'MSYS2' }
     if (-not $state.Gcc) { $missing += 'GCC' }
@@ -885,6 +882,7 @@ $installButton.Add_Click({
     $installButton.Enabled = $true
 })
 
+$configButton.Add_Click({ Select-ProjectFolderAndConfigure })
 $openButton.Add_Click({ Start-Process 'explorer.exe' -ArgumentList $projectDir })
 $closeButton.Add_Click({ $form.Close() })
 $installMenu.Add_Click({ $installButton.PerformClick() })
@@ -1021,6 +1019,7 @@ $log.BringToFront()
 $statusLabel.BringToFront()
 $progressBar.BringToFront()
 $installButton.BringToFront()
+$configButton.BringToFront()
 $openButton.BringToFront()
 $closeButton.BringToFront()
 $uninstallButton.BringToFront()
