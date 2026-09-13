@@ -148,12 +148,13 @@ $menu.BackColor = [System.Drawing.Color]::FromArgb(5, 25, 14)
 $menu.ForeColor = $green
 $menu.Font = New-Object System.Drawing.Font('Consolas', 9)
 $installMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Instalar')
-$uninstallMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Desinstalar')
+$configMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Configurar proyecto')
 $tutorialMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Tutorial')
 $checkMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Comprobar ejemplos')
 $aboutMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Acerca de')
-[void]$menu.Items.AddRange(@($installMenu, $uninstallMenu, $tutorialMenu, $checkMenu, $aboutMenu))
-$menuItems = @($installMenu, $uninstallMenu, $tutorialMenu, $checkMenu, $aboutMenu)
+$uninstallMenu = New-Object System.Windows.Forms.ToolStripMenuItem('Desinstalar')
+[void]$menu.Items.AddRange(@($installMenu, $configMenu, $checkMenu, $tutorialMenu, $aboutMenu, $uninstallMenu))
+$menuItems = @($installMenu, $configMenu, $checkMenu, $tutorialMenu, $aboutMenu, $uninstallMenu)
 foreach ($menuItem in $menuItems) {
     $menuItem.BackColor = [System.Drawing.Color]::FromArgb(5, 25, 14)
     $menuItem.ForeColor = $green
@@ -233,8 +234,9 @@ function Write-IfMissing([string]$path, [string]$content) {
 
 function Set-VSCodeConfiguration {
     [CmdletBinding(SupportsShouldProcess)]
-    param()
-    $vscodeDir = Join-Path $projectDir '.vscode'
+    param([string]$targetDir = $projectDir)
+    if ([string]::IsNullOrWhiteSpace($targetDir)) { $targetDir = $projectDir }
+    $vscodeDir = Join-Path $targetDir '.vscode'
     if (-not $PSCmdlet.ShouldProcess($vscodeDir, 'Configurar VS Code')) { return }
     New-Item -ItemType Directory -Force -Path $vscodeDir | Out-Null
     $tasksJson = @'
@@ -288,6 +290,55 @@ function Set-VSCodeConfiguration {
 '@
     $propertiesJson = $propertiesJson.Replace('__GCC_PATH__', $gccPath.Replace('\', '/'))
     Write-IfMissing (Join-Path $vscodeDir 'c_cpp_properties.json') $propertiesJson
+}
+
+function Add-UcrtToUserPath {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    if (-not (Test-Path $gccPath)) { return }
+    if (-not $PSCmdlet.ShouldProcess('PATH de usuario', 'Agregar binarios de GCC')) { return }
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $paths = if ($userPath) { ($userPath -split ';') | Where-Object { [string]::IsNullOrWhiteSpace($_) -eq $false } } else { @() }
+    if ($paths -notcontains $ucrtBin) {
+        $newUserPath = if ($userPath) { "$userPath;$ucrtBin;$usrBin" } else { "$ucrtBin;$usrBin" }
+        [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
+        $env:PATH = "$ucrtBin;$usrBin;$env:PATH"
+        Add-Log "Registrado GCC en el PATH de usuario ($ucrtBin)"
+    }
+}
+
+function Test-VSCodeConfiguredIn {
+    [CmdletBinding()]
+    param([string]$folder)
+    if ([string]::IsNullOrWhiteSpace($folder) -or -not (Test-Path $folder)) { return $false }
+    $vscodeFolder = Join-Path $folder '.vscode'
+    if (-not (Test-Path $vscodeFolder)) { return $false }
+    $requiredFiles = @('tasks.json', 'launch.json', 'c_cpp_properties.json')
+    foreach ($fileName in $requiredFiles) {
+        $filePath = Join-Path $vscodeFolder $fileName
+        if (-not (Test-Path $filePath)) { return $false }
+    }
+    return $true
+}
+
+function Select-ProjectFolderAndConfigure {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    if (-not $PSCmdlet.ShouldProcess('proyecto VS Code', 'Configurar carpeta')) { return }
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = 'Selecciona la carpeta donde deseas configurar VS Code (ej: ALGORITMO)'
+    $parentPath = Split-Path -Parent $projectDir
+    $dialog.SelectedPath = if (Test-Path $parentPath) { $parentPath } else { $projectDir }
+    $dialog.ShowNewFolderButton = $true
+    if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK -and -not [string]::IsNullOrWhiteSpace($dialog.SelectedPath)) {
+        $target = $dialog.SelectedPath
+        Set-VSCodeConfiguration -targetDir $target
+        Add-UcrtToUserPath
+        Add-Log "Configuracion de VS Code aplicada exitosamente en: $target"
+        [System.Windows.Forms.MessageBox]::Show("Configuracion de VS Code aplicada exitosamente en:`r`n$target", 'Configurar proyecto', 'OK', 'Information') | Out-Null
+        Update-InstallationControl
+    }
+    $dialog.Dispose()
 }
 
 function Initialize-Example {
@@ -641,17 +692,23 @@ function Get-InstallationState {
     if ($vsCodeCommand) {
         $extensionInstalled = @(& $vsCodeCommand.Source '--list-extensions' 2>$null) -contains 'ms-vscode.cpptools'
     }
-    $configurationReady = @('tasks.json', 'launch.json', 'c_cpp_properties.json' | ForEach-Object {
-        Test-Path (Join-Path (Join-Path $projectDir '.vscode') $_)
-    }) -notcontains $false
+    $localConfig = Test-VSCodeConfiguredIn -folder $projectDir
+    $parentDir = Split-Path -Parent $projectDir
+    $parentConfig = if ($parentDir) { Test-VSCodeConfiguredIn -folder $parentDir } else { $false }
+    $configurationReady = $localConfig -or $parentConfig
+    $compilerReady = (Test-Path $bashPath) -and (Test-Path $gccPath) -and (Test-Path $gdbPath)
+
     [pscustomobject]@{
         Msys2 = Test-Path $bashPath
         Gcc = Test-Path $gccPath
         Gdb = Test-Path $gdbPath
+        CompilerReady = $compilerReady
         VsCode = [bool]$vsCodeCommand
         Extension = $extensionInstalled
         Configuration = $configurationReady
-        CoreReady = (Test-Path $bashPath) -and (Test-Path $gccPath) -and (Test-Path $gdbPath) -and $configurationReady
+        LocalConfiguration = $localConfig
+        ParentConfiguration = $parentConfig
+        CoreReady = $compilerReady -and $configurationReady
     }
 }
 
@@ -663,16 +720,28 @@ function Update-InstallationControl {
     $hasInstalledComponent = $state.Msys2 -or $state.Gcc -or $state.Gdb -or $state.Extension -or $state.Configuration
     $uninstallButton.Visible = $hasInstalledComponent
     $uninstallButton.Enabled = $hasInstalledComponent
-    if ($state.CoreReady) { $installButton.Text = '[ ANALIZAR ESTADO ]' }
-    elseif ($hasInstalledComponent) { $installButton.Text = '[ REPARAR INSTALACION ]' }
-    else { $installButton.Text = '[ INSTALAR TODO ]' }
-    if ($state.CoreReady) { $statusLabel.Text = 'Estado: entorno completo' }
-    elseif ($hasInstalledComponent) { $statusLabel.Text = 'Estado: instalacion parcial; requiere reparacion' }
-    else { $statusLabel.Text = 'Estado: listo para instalar' }
+    if ($state.CompilerReady -and $state.Configuration) {
+        $installButton.Text = '[ ANALIZAR ESTADO ]'
+        $configLoc = if ($state.LocalConfiguration) { 'proyecto actual' } elseif ($state.ParentConfiguration) { 'carpeta padre' } else { 'externa' }
+        $statusLabel.Text = "Estado: entorno completo; GCC 16.1 y VS Code listos ($configLoc)"
+    } elseif ($state.CompilerReady) {
+        $installButton.Text = '[ CONFIGURAR PROYECTO ]'
+        $statusLabel.Text = 'Estado: GCC y GDB listos; pulsa para elegir carpeta de proyecto'
+    } elseif ($hasInstalledComponent) {
+        $installButton.Text = '[ REPARAR INSTALACION ]'
+        $statusLabel.Text = 'Estado: instalacion parcial; faltan componentes del compilador'
+    } else {
+        $installButton.Text = '[ INSTALAR TODO ]'
+        $statusLabel.Text = 'Estado: listo para instalar'
+    }
 }
 
 $installButton.Add_Click({
     $state = Get-InstallationState
+    if ($state.CompilerReady -and -not $state.Configuration) {
+        Select-ProjectFolderAndConfigure
+        return
+    }
     $missing = @()
     if (-not $state.Msys2) { $missing += 'MSYS2' }
     if (-not $state.Gcc) { $missing += 'GCC' }
@@ -680,8 +749,9 @@ $installButton.Add_Click({
     if (-not $state.VsCode) { $missing += 'VS Code no detectado' }
     if ($state.VsCode -and -not $state.Extension) { $missing += 'extension C/C++' }
     if (-not $state.Configuration) { $missing += 'configuracion de VS Code' }
-    $stateText = "MSYS2: $($state.Msys2)`r`nGCC: $($state.Gcc)`r`nGDB: $($state.Gdb)`r`nVS Code: $($state.VsCode)`r`nExtension: $($state.Extension)`r`nConfiguracion: $($state.Configuration)"
-    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado. Solo se validara la configuracion y los ejemplos.' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
+    $configDetail = if ($state.LocalConfiguration) { 'si (proyecto actual)' } elseif ($state.ParentConfiguration) { 'si (carpeta padre)' } else { 'no' }
+    $stateText = "MSYS2: $($state.Msys2)`r`nGCC: $($state.Gcc)`r`nGDB: $($state.Gdb)`r`nVS Code: $($state.VsCode)`r`nExtension: $($state.Extension)`r`nConfiguracion: $configDetail"
+    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado y configurado correctamente. Deseas revalidar ejemplos?' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
     $answer = [System.Windows.Forms.MessageBox]::Show("$stateText`r`n`r`n$actionText`r`n`r`nDeseas continuar?", 'Revision previa de CCompilerFlat', 'YesNo', 'Question')
     if ($answer -ne 'Yes') { return }
     $installButton.Enabled = $false
@@ -702,7 +772,8 @@ $installButton.Add_Click({
             Invoke-Native $bashPath @('-lc', 'pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gdb')
         } else { Add-Log 'GCC y GDB ya estan instalados; no se reinstalan.' }
         Set-InstallerProgress 60 'instalando GCC y GDB'
-        Set-VSCodeConfiguration
+        Add-UcrtToUserPath
+        Set-VSCodeConfiguration -targetDir $projectDir
         Initialize-Example
         Test-Example
         Set-InstallerProgress 80 'comprobando ejemplos y VS Code'
@@ -725,6 +796,7 @@ $installButton.Add_Click({
 $openButton.Add_Click({ Start-Process 'explorer.exe' -ArgumentList $projectDir })
 $closeButton.Add_Click({ $form.Close() })
 $installMenu.Add_Click({ $installButton.PerformClick() })
+$configMenu.Add_Click({ Select-ProjectFolderAndConfigure })
 $uninstallMenu.Add_Click({ $uninstallButton.PerformClick() })
 $tutorialMenu.Add_Click({ Show-Tutorial })
 $checkMenu.Add_Click({
@@ -735,6 +807,8 @@ $aboutMenu.Add_Click({ Show-About })
 $uninstallButton.Add_Click({
     $answer = [System.Windows.Forms.MessageBox]::Show('Se eliminaran MSYS2, GCC, GDB y la extension C/C++. Deseas continuar?', 'CCompilerFlat', 'YesNo', 'Warning')
     if ($answer -ne 'Yes') { return }
+    $removeConfigAnswer = [System.Windows.Forms.MessageBox]::Show("Deseas eliminar tambien los archivos de configuracion de VS Code (.vscode)?`r`n`r`nPulsa SI para eliminarlos o NO para conservarlos intactos.", 'Configuracion de VS Code', 'YesNo', 'Question')
+    $removeConfig = ($removeConfigAnswer -eq 'Yes')
     $installButton.Enabled = $false
     $uninstallButton.Enabled = $false
     Set-InstallerProgress 0 'preparando desinstalacion'
@@ -744,7 +818,12 @@ $uninstallButton.Add_Click({
         Set-InstallerProgress 40 'retirando extension de VS Code'
         if (Get-Command winget.exe -ErrorAction SilentlyContinue) { Invoke-Native 'winget.exe' @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--silent', '--accept-source-agreements') }
         Set-InstallerProgress 80 'retirando MSYS2'
-        Remove-GeneratedVSCodeFile
+        if ($removeConfig) {
+            Remove-GeneratedVSCodeFile
+            Add-Log 'Configuracion .vscode eliminada a peticion del usuario.'
+        } else {
+            Add-Log 'Configuracion .vscode conservada intacta.'
+        }
         Set-InstallerProgress 100 'desinstalacion completa'
         Add-Log 'DESINSTALACION COMPLETA.'
         [System.Windows.Forms.MessageBox]::Show('Herramientas eliminadas.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
