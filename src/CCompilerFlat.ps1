@@ -1011,9 +1011,9 @@ $installButton.Add_Click({
     if (-not $state.VsCode) { $missing += 'VS Code no detectado' }
     if ($state.VsCode -and -not $state.Extension) { $missing += 'extension C/C++' }
     if (-not $state.Configuration) { $missing += 'configuracion de VS Code' }
-    $configDetail = if ($state.LocalConfiguration) { 'si (proyecto actual)' } elseif ($state.ParentConfiguration) { 'si (carpeta padre)' } else { 'no' }
+    $configDetail = if ($state.LocalConfiguration) { 'si (proyecto actual)' } elseif ($state.GlobalConfiguration) { 'si (global de usuario)' } elseif ($state.ParentConfiguration) { 'si (carpeta padre)' } else { 'no' }
     $stateText = "MSYS2: $($state.Msys2)`r`nGCC: $($state.Gcc)`r`nGDB: $($state.Gdb)`r`nVS Code: $($state.VsCode)`r`nExtension: $($state.Extension)`r`nConfiguracion: $configDetail"
-    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado y configurado correctamente. Deseas revalidar ejemplos?' } elseif (-not $state.Msys2 -and -not $state.Gcc) { 'Se instalara el compilador completo (MSYS2, GCC 16.1 UCRT64, GDB) y la configuracion de VS Code.' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
+    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado y configurado correctamente. Deseas revalidar ejemplos?' } elseif (-not $state.Msys2 -and -not $state.Gcc) { 'Se instalara el compilador completo (MSYS2, GCC 16.1 UCRT64, GDB) y la configuracion global de VS Code.' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
     $answer = [System.Windows.Forms.MessageBox]::Show("$stateText`r`n`r`n$actionText`r`n`r`nDeseas continuar?", 'Revision previa de CCompilerFlat', 'YesNo', 'Question')
     if ($answer -ne 'Yes') { return }
     $installButton.Enabled = $false
@@ -1035,7 +1035,6 @@ $installButton.Add_Click({
         } else { Add-Log 'GCC y GDB ya estan instalados; no se reinstalan.' }
         Set-InstallerProgress 60 'instalando GCC y GDB'
         Add-UcrtToUserPath
-        Set-VSCodeConfiguration -targetDir $projectDir
         Set-VSCodeGlobalConfiguration
         Initialize-Example
         Test-Example
