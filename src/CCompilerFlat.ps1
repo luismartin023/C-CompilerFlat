@@ -610,8 +610,11 @@ function Update-InstallationControl {
     $uninstallButton.Visible = $hasInstalledComponent
     $uninstallButton.Enabled = $hasInstalledComponent
     if ($state.CoreReady) { $installButton.Text = '[ ANALIZAR ESTADO ]' }
+    elseif ($hasInstalledComponent) { $installButton.Text = '[ REPARAR INSTALACION ]' }
     else { $installButton.Text = '[ INSTALAR TODO ]' }
-    $statusLabel.Text = if ($state.CoreReady) { 'Estado: entorno detectado' } else { 'Estado: listo para instalar' }
+    if ($state.CoreReady) { $statusLabel.Text = 'Estado: entorno completo' }
+    elseif ($hasInstalledComponent) { $statusLabel.Text = 'Estado: instalacion parcial; requiere reparacion' }
+    else { $statusLabel.Text = 'Estado: listo para instalar' }
 }
 
 $installButton.Add_Click({
