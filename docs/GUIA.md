@@ -6,6 +6,8 @@ Ejecuta `CCompilerFlat.bat` y selecciona **Instalar**. La app instala el compila
 
 Antes de abrir la app puedes ejecutar `Preparar-CCompilerFlat.bat`. Ese archivo instala PSScriptAnalyzer para revisar `src\CCompilerFlat.ps1`, muestra cualquier warning y abre la app solo cuando el analisis esta limpio. No es obligatorio para usuarios finales.
 
+Para una prueba completa sin abrir la interfaz, ejecuta `Verificar-CCompilerFlat.bat`. Comprueba archivos, sintaxis, PSScriptAnalyzer y compilacion de los cuatro ejemplos.
+
 ## Compilar un archivo C
 
 Abre la carpeta que contiene tu codigo en VS Code, abre el archivo `.c` y pulsa el boton verde **Ejecutar y depurar**. La tarea compila el archivo activo y genera el `.exe` en la misma carpeta.
@@ -32,6 +34,8 @@ Coloca un punto de interrupcion haciendo clic junto al numero de linea y pulsa *
 ## Desinstalar
 
 Desde el menu **Desinstalar**, confirma la operacion. El instalador retira MSYS2, GCC, GDB y la extension de C/C++. No elimina tus archivos fuente.
+
+El apartado **Acerca de** contiene la identidad del proyecto y los enlaces de contacto. El preparador no duplica estas opciones: despues del analisis abre la misma aplicacion principal.
 
 ## Problemas comunes
 

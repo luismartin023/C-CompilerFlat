@@ -25,6 +25,7 @@ Instalador grafico para preparar Windows para compilar y depurar proyectos C/C++
 ```text
 C-CompilerFlat/
 |- CCompilerFlat.bat              # Entrada normal para usuarios
+|- Verificar-CCompilerFlat.bat    # Revisa toda la instalacion
 |- src/CCompilerFlat.ps1          # Aplicacion grafica principal
 |- Preparar-CCompilerFlat.bat      # Revisa el codigo y abre la app
 |- tools/                          # Herramientas internas de mantenimiento
@@ -36,7 +37,7 @@ C-CompilerFlat/
 `- SECURITY.md
 ```
 
-Solo hay dos accesos intencionales en la raiz: `CCompilerFlat.bat` para el usuario final y `Preparar-CCompilerFlat.bat` para revisar el codigo antes de abrir la app. El script de la app vive en `src/` y no se duplica.
+Hay tres accesos intencionales en la raiz: `CCompilerFlat.bat` para usar la app, `Preparar-CCompilerFlat.bat` para analizar y abrir la app, y `Verificar-CCompilerFlat.bat` para ejecutar todas las comprobaciones sin abrir la interfaz. El script de la app vive en `src/` y no se duplica.
 
 La instalacion puede pedir permisos de Windows para instalar MSYS2. El script no modifica el `PATH` del sistema.
 
@@ -72,3 +73,5 @@ Para revisar sintaxis, archivos requeridos y compilacion de los ejemplos, ejecut
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\Verificar-CCompilerFlat.ps1
 ```
+
+Tambien puedes ejecutar `Verificar-CCompilerFlat.bat` con doble clic. El menu **Desinstalar** y el apartado **Acerca de** estan dentro de la app principal; el preparador abre esa misma app despues del analisis.
