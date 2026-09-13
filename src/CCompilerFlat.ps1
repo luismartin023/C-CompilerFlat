@@ -390,7 +390,8 @@ function Select-ProjectFolderAndConfigure {
         Set-VSCodeConfiguration -targetDir $target
         Add-UcrtToUserPath
         Add-Log "Configuracion de VS Code aplicada exitosamente en: $target"
-        [System.Windows.Forms.MessageBox]::Show("Configuracion de VS Code aplicada exitosamente en:`r`n$target", 'Configurar proyecto', 'OK', 'Information') | Out-Null
+        $note = if (-not (Test-Path $gccPath)) { "`r`n`r`nAviso: Recuerda pulsar [ INSTALAR TODO ] para instalar el compilador GCC." } else { '' }
+        [System.Windows.Forms.MessageBox]::Show("Configuracion de VS Code aplicada exitosamente en:`r`n$target$note", 'Configurar proyecto', 'OK', 'Information') | Out-Null
         Update-InstallationControl
     }
     $dialog.Dispose()
