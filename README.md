@@ -31,6 +31,7 @@ C-CompilerFlat/
 |- tools/                          # Herramientas internas de mantenimiento
 |  |- Preparar-PSScriptAnalyzer.ps1
 |  `- Verificar-CCompilerFlat.ps1
+|- assets/                         # Identidad visual de la aplicacion
 |- ejemplos/                       # Fuentes C de prueba y juegos
 |- docs/                           # Guia y datos del proyecto
 |- LICENSE

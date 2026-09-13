@@ -10,6 +10,7 @@ $usrBin = Join-Path $msysRoot 'usr\bin'
 $gccPath = Join-Path $ucrtBin 'gcc.exe'
 $gdbPath = Join-Path $ucrtBin 'gdb.exe'
 $bashPath = Join-Path $msysRoot 'usr\bin\bash.exe'
+$logoPath = Join-Path $projectDir 'assets\LOGO-SENCILLO-1-1.png'
 $githubUrl = 'https://github.com/luismartin023'
 $linkedinUrl = 'https://www.linkedin.com/in/luismartinpm-mkz-dev/'
 $whatsappUrl = 'https://api.whatsapp.com/send/?phone=18296782049&text&type=phone_number&app_absent=0'
@@ -29,6 +30,17 @@ $form.BackColor = $black
 $form.ForeColor = $green
 $form.Font = $font
 
+if (Test-Path $logoPath) {
+    $iconSource = [System.Drawing.Image]::FromFile($logoPath)
+    $iconBitmap = New-Object System.Drawing.Bitmap(32, 32)
+    $iconGraphics = [System.Drawing.Graphics]::FromImage($iconBitmap)
+    $iconGraphics.DrawImage($iconSource, 0, 0, 32, 32)
+    $form.Icon = [System.Drawing.Icon]::FromHandle($iconBitmap.GetHicon())
+    $iconGraphics.Dispose()
+    $iconBitmap.Dispose()
+    $iconSource.Dispose()
+}
+
 $rainPanel = New-Object System.Windows.Forms.Panel
 $rainPanel.Dock = 'Fill'
 $rainPanel.BackColor = $black
@@ -36,13 +48,24 @@ $form.Controls.Add($rainPanel)
 
 $header = New-Object System.Windows.Forms.Label
 $header.Text = '  CCompilerFlat by LuisMartinPM'
-$header.Location = New-Object System.Drawing.Point(28, 32)
-$header.Size = New-Object System.Drawing.Size(780, 42)
+$header.Location = New-Object System.Drawing.Point(78, 32)
+$header.Size = New-Object System.Drawing.Size(730, 42)
 $header.Font = New-Object System.Drawing.Font('Consolas', 19, [System.Drawing.FontStyle]::Bold)
 $header.ForeColor = $green
 $header.BackColor = [System.Drawing.Color]::FromArgb(8, 30, 18)
 $header.Anchor = 'Top, Left, Right'
 $form.Controls.Add($header)
+
+if (Test-Path $logoPath) {
+    $logoBox = New-Object System.Windows.Forms.PictureBox
+    $logoBox.Location = New-Object System.Drawing.Point(32, 36)
+    $logoBox.Size = New-Object System.Drawing.Size(36, 36)
+    $logoBox.SizeMode = 'Zoom'
+    $logoBox.BackColor = [System.Drawing.Color]::Transparent
+    $logoBox.Image = [System.Drawing.Image]::FromFile($logoPath)
+    $logoBox.Anchor = 'Top, Left'
+    $form.Controls.Add($logoBox)
+}
 
 $subtitle = New-Object System.Windows.Forms.Label
 $subtitle.Text = 'MSYS2  //  GCC  //  GDB  //  VS CODE'
@@ -459,11 +482,22 @@ function Show-About {
     $aboutTitle = New-Object System.Windows.Forms.Label
     $aboutTitle.Text = 'CCompilerFlat by LuisMartinPM'
     $aboutTitle.Location = New-Object System.Drawing.Point(28, 24)
-    $aboutTitle.Size = New-Object System.Drawing.Size(590, 32)
+    $aboutTitle.Size = New-Object System.Drawing.Size(460, 32)
     $aboutTitle.Font = New-Object System.Drawing.Font('Consolas', 14, [System.Drawing.FontStyle]::Bold)
     $aboutTitle.ForeColor = $green
     $aboutTitle.Anchor = 'Top, Left, Right'
     $about.Controls.Add($aboutTitle)
+
+    if (Test-Path $logoPath) {
+        $aboutLogo = New-Object System.Windows.Forms.PictureBox
+        $aboutLogo.Location = New-Object System.Drawing.Point(510, 20)
+        $aboutLogo.Size = New-Object System.Drawing.Size(105, 105)
+        $aboutLogo.SizeMode = 'Zoom'
+        $aboutLogo.BackColor = [System.Drawing.Color]::Transparent
+        $aboutLogo.Image = [System.Drawing.Image]::FromFile($logoPath)
+        $aboutLogo.Anchor = 'Top, Right'
+        $about.Controls.Add($aboutLogo)
+    }
 
     $aboutDescription = New-Object System.Windows.Forms.Label
     $aboutDescription.Text = "Luis Martin Pena Mejia`r`nIngeniero de software dominicano`r`nPunta Cana, Republica Dominicana"
