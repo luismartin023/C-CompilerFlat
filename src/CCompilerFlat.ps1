@@ -202,8 +202,11 @@ function Test-Administrator {
 }
 
 function Invoke-Native([string]$filePath, [string[]]$arguments) {
+    $resolvedPath = if (Test-Path $filePath) { (Get-Item $filePath).FullName } else { (Get-Command $filePath -ErrorAction SilentlyContinue).Source }
+    if ($resolvedPath) { $filePath = $resolvedPath }
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $filePath
+    if (Test-Path $filePath) { $startInfo.WorkingDirectory = Split-Path -Parent $filePath }
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
@@ -722,18 +725,24 @@ function Update-InstallationControl {
     $uninstallButton.Enabled = $hasInstalledComponent
     if ($state.CompilerReady -and $state.Configuration) {
         $installButton.Text = '[ ANALIZAR ESTADO ]'
+        $installMenu.Text = 'Analizar estado'
         $configLoc = if ($state.LocalConfiguration) { 'proyecto actual' } elseif ($state.ParentConfiguration) { 'carpeta padre' } else { 'externa' }
         $statusLabel.Text = "Estado: entorno completo; GCC 16.1 y VS Code listos ($configLoc)"
     } elseif ($state.CompilerReady) {
         $installButton.Text = '[ CONFIGURAR PROYECTO ]'
+        $installMenu.Text = 'Configurar proyecto'
         $statusLabel.Text = 'Estado: GCC y GDB listos; pulsa para elegir carpeta de proyecto'
     } elseif ($hasInstalledComponent) {
         $installButton.Text = '[ REPARAR INSTALACION ]'
+        $installMenu.Text = 'Reparar instalacion'
         $statusLabel.Text = 'Estado: instalacion parcial; faltan componentes del compilador'
     } else {
         $installButton.Text = '[ INSTALAR TODO ]'
+        $installMenu.Text = 'Instalar todo'
         $statusLabel.Text = 'Estado: listo para instalar'
     }
+    $uninstallMenu.Visible = $hasInstalledComponent
+    $uninstallMenu.Enabled = $hasInstalledComponent
 }
 
 $installButton.Add_Click({
@@ -777,13 +786,17 @@ $installButton.Add_Click({
         Initialize-Example
         Test-Example
         Set-InstallerProgress 80 'comprobando ejemplos y VS Code'
-        if ($state.VsCode -and -not $state.Extension) { Invoke-Native 'code.cmd' @('--install-extension', 'ms-vscode.cpptools', '--force') }
-        elseif ($state.Extension) { Add-Log 'La extension C/C++ ya esta instalada; no se reinstala.' }
+        if ($state.VsCode -and -not $state.Extension) {
+            try {
+                Invoke-Native 'code.cmd' @('--install-extension', 'ms-vscode.cpptools', '--force')
+            } catch {
+                Add-Log 'Aviso: la extension no se pudo instalar automaticamente (puedes instalar ms-vscode.cpptools desde VS Code).'
+            }
+        } elseif ($state.Extension) { Add-Log 'La extension C/C++ ya esta instalada; no se reinstala.' }
         else { Add-Log 'VS Code no esta en PATH; la configuracion se creo, pero la extension debe instalarse desde VS Code.' }
         Set-InstallerProgress 100 'instalacion completa'
         Add-Log 'INSTALACION COMPLETA. VS Code esta listo.'
         [System.Windows.Forms.MessageBox]::Show('Instalacion completa. VS Code esta listo.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
-        Show-Tutorial
         Update-InstallationControl
     } catch {
         Add-Log ('ERROR: ' + $_.Exception.Message)
@@ -814,10 +827,26 @@ $uninstallButton.Add_Click({
     Set-InstallerProgress 0 'preparando desinstalacion'
     try {
         Add-Log 'Iniciando desinstalacion...'
-        if (Get-Command code.cmd -ErrorAction SilentlyContinue) { Invoke-Native 'code.cmd' @('--uninstall-extension', 'ms-vscode.cpptools', '--force') }
+        $codeCmd = Get-Command code.cmd -ErrorAction SilentlyContinue
+        if ($codeCmd) {
+            try {
+                Invoke-Native $codeCmd.Source @('--uninstall-extension', 'ms-vscode.cpptools', '--force')
+            } catch {
+                Add-Log 'Aviso: la extension no se pudo desinstalar (si VS Code esta abierto, cierralo primero).'
+            }
+        }
         Set-InstallerProgress 40 'retirando extension de VS Code'
-        if (Get-Command winget.exe -ErrorAction SilentlyContinue) { Invoke-Native 'winget.exe' @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--silent', '--accept-source-agreements') }
+        $wingetCmd = Get-Command winget.exe -ErrorAction SilentlyContinue
+        if ($wingetCmd) {
+            Invoke-Native $wingetCmd.Source @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--silent', '--accept-source-agreements')
+        }
         Set-InstallerProgress 80 'retirando MSYS2'
+        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+        if ($userPath) {
+            $cleaned = ($userPath -split ';') | Where-Object { $_ -ne $ucrtBin -and $_ -ne $usrBin -and -not [string]::IsNullOrWhiteSpace($_) }
+            [Environment]::SetEnvironmentVariable('Path', ($cleaned -join ';'), 'User')
+            Add-Log 'Rutas de GCC retiradas del PATH de usuario.'
+        }
         if ($removeConfig) {
             Remove-GeneratedVSCodeFile
             Add-Log 'Configuracion .vscode eliminada a peticion del usuario.'
