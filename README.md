@@ -28,7 +28,8 @@ C-CompilerFlat/
 |- src/CCompilerFlat.ps1          # Aplicacion grafica principal
 |- Preparar-CCompilerFlat.bat      # Revisa el codigo y abre la app
 |- tools/                          # Herramientas internas de mantenimiento
-|  `- Preparar-PSScriptAnalyzer.ps1
+|  |- Preparar-PSScriptAnalyzer.ps1
+|  `- Verificar-CCompilerFlat.ps1
 |- ejemplos/                       # Fuentes C de prueba y juegos
 |- docs/                           # Guia y datos del proyecto
 |- LICENSE
@@ -62,4 +63,12 @@ No se incluye ningun archivo para desactivar Windows Defender ni para crear excl
 
 ## Licencia
 
-Este proyecto se distribuye bajo la licencia MIT. Consulta [LICENSE](LICENSE).
+Este proyecto se distribuye bajo la licencia MIT. Consulta [LICENSE](LICENSE) para el texto legal y [docs/LICENCIA.md](docs/LICENCIA.md) para la explicacion en espanol.
+
+## Verificacion
+
+Para revisar sintaxis, archivos requeridos y compilacion de los ejemplos, ejecuta:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\Verificar-CCompilerFlat.ps1
+```
