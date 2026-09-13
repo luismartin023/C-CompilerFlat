@@ -790,9 +790,12 @@ function Update-InstallationControl {
     param()
     if (-not $PSCmdlet.ShouldProcess('controles de instalacion', 'Actualizar estado')) { return }
     $state = Get-InstallationState
-    $hasInstalledComponent = $state.Msys2 -or $state.Gcc -or $state.Gdb -or $state.Extension -or $state.Configuration
-    $uninstallButton.Visible = $hasInstalledComponent
-    $uninstallButton.Enabled = $hasInstalledComponent
+    $compilerInstalled = $state.Msys2 -or $state.Gcc -or $state.Gdb
+    $uninstallButton.Visible = $compilerInstalled
+    $uninstallButton.Enabled = $compilerInstalled
+    $uninstallMenu.Visible = $compilerInstalled
+    $uninstallMenu.Enabled = $compilerInstalled
+
     if ($state.CompilerReady -and $state.Configuration) {
         $installButton.Text = '[ ANALIZAR ESTADO ]'
         $installMenu.Text = 'Analizar estado'
@@ -802,7 +805,7 @@ function Update-InstallationControl {
         $installButton.Text = '[ CONFIGURAR PROYECTO ]'
         $installMenu.Text = 'Configurar proyecto'
         $statusLabel.Text = 'Estado: GCC y GDB listos; pulsa para elegir carpeta de proyecto'
-    } elseif ($hasInstalledComponent) {
+    } elseif ($compilerInstalled) {
         $installButton.Text = '[ REPARAR INSTALACION ]'
         $installMenu.Text = 'Reparar instalacion'
         $statusLabel.Text = 'Estado: instalacion parcial; faltan componentes del compilador'
@@ -811,8 +814,6 @@ function Update-InstallationControl {
         $installMenu.Text = 'Instalar todo'
         $statusLabel.Text = 'Estado: listo para instalar'
     }
-    $uninstallMenu.Visible = $hasInstalledComponent
-    $uninstallMenu.Enabled = $hasInstalledComponent
 }
 
 $installButton.Add_Click({
@@ -830,7 +831,7 @@ $installButton.Add_Click({
     if (-not $state.Configuration) { $missing += 'configuracion de VS Code' }
     $configDetail = if ($state.LocalConfiguration) { 'si (proyecto actual)' } elseif ($state.ParentConfiguration) { 'si (carpeta padre)' } else { 'no' }
     $stateText = "MSYS2: $($state.Msys2)`r`nGCC: $($state.Gcc)`r`nGDB: $($state.Gdb)`r`nVS Code: $($state.VsCode)`r`nExtension: $($state.Extension)`r`nConfiguracion: $configDetail"
-    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado y configurado correctamente. Deseas revalidar ejemplos?' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
+    $actionText = if ($missing.Count -eq 0) { 'Todo esta instalado y configurado correctamente. Deseas revalidar ejemplos?' } elseif (-not $state.Msys2 -and -not $state.Gcc) { 'Se instalara el compilador completo (MSYS2, GCC 16.1 UCRT64, GDB) y la configuracion de VS Code.' } else { "Falta o requiere reparacion: $($missing -join ', '). Se conservaran los archivos existentes." }
     $answer = [System.Windows.Forms.MessageBox]::Show("$stateText`r`n`r`n$actionText`r`n`r`nDeseas continuar?", 'Revision previa de CCompilerFlat', 'YesNo', 'Question')
     if ($answer -ne 'Yes') { return }
     $installButton.Enabled = $false

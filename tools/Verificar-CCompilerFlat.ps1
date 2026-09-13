@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $projectDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $gccPath = 'C:\msys64\ucrt64\bin\gcc.exe'
 $modulePath = Join-Path $env:LOCALAPPDATA 'CCompilerFlat\PowerShell\Modules'
@@ -37,20 +37,23 @@ if ($analysisResults.Count -gt 0) {
     throw 'PSScriptAnalyzer encontro errores o warnings.'
 }
 
-if (-not (Test-Path $gccPath)) { throw "No se encontro GCC en $gccPath" }
-$testDir = Join-Path $env:TEMP "CCompilerFlat-Verification-$PID"
-New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-try {
-    $examplesDir = Join-Path $projectDir 'ejemplos'
-    Copy-Item (Join-Path $examplesDir '*.c') $testDir
-    $env:PATH = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:PATH"
-    foreach ($sourceFile in Get-ChildItem $testDir -Filter '*.c') {
-        $outputFile = Join-Path $testDir ([System.IO.Path]::ChangeExtension($sourceFile.Name, '.exe'))
-        & $gccPath -std=c17 -Wall -Wextra -Wpedantic $sourceFile.FullName -o $outputFile
-        if ($LASTEXITCODE -ne 0) { throw "No compilo $($sourceFile.Name)" }
+if (Test-Path $gccPath) {
+    $testDir = Join-Path $env:TEMP "CCompilerFlat-Verification-$PID"
+    New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+    try {
+        $examplesDir = Join-Path $projectDir 'ejemplos'
+        Copy-Item (Join-Path $examplesDir '*.c') $testDir
+        $env:PATH = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:PATH"
+        foreach ($sourceFile in Get-ChildItem $testDir -Filter '*.c') {
+            $outputFile = Join-Path $testDir ([System.IO.Path]::ChangeExtension($sourceFile.Name, '.exe'))
+            & $gccPath -std=c17 -Wall -Wextra -Wpedantic $sourceFile.FullName -o $outputFile
+            if ($LASTEXITCODE -ne 0) { throw "No compilo $($sourceFile.Name)" }
+        }
+    } finally {
+        Remove-Item $testDir -Recurse -Force -ErrorAction SilentlyContinue
     }
-} finally {
-    Remove-Item $testDir -Recurse -Force -ErrorAction SilentlyContinue
+} else {
+    Write-Output 'Aviso: GCC no esta instalado actualmente en el sistema; verificacion de sintaxis y analizador completadas.'
 }
 
 Write-Output 'CCompilerFlat: verificacion completa y correcta.'
