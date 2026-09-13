@@ -265,6 +265,9 @@ function Get-DiagnosticRecommendation {
     if ([string]::IsNullOrWhiteSpace($errorMessage)) {
         return 'Revisa el registro de eventos para mas detalles o consulta el menu Ayuda / Tutorial.'
     }
+    if ($errorMessage -match 'user scope cannot be uninstalled') {
+        return 'Windows (winget) prohibe desinstalar paquetes de usuario desde una sesion con privilegios de Administrador. Ejecuta CCompilerFlat de forma NORMAL (doble clic habitual, SIN "Ejecutar como administrador").'
+    }
     if ($errorMessage -match '-1978335107|admin|elevat|privilege|privilegio|elevacion|uac') {
         return 'La instalacion o desinstalacion requiere permisos de Administrador de Windows (codigo -1978335107 / UAC). Ejecuta CCompilerFlat como Administrador (clic derecho > "Ejecutar como administrador") o autoriza la ventana UAC de Windows para permitir modificar C:\msys64.'
     }
@@ -925,23 +928,42 @@ $uninstallButton.Add_Click({
             }
         }
         Set-InstallerProgress 40 'retirando extension de VS Code'
+        $uninstalledMsys = $false
         $wingetCmd = Get-Command winget.exe -ErrorAction SilentlyContinue
-        if ($wingetCmd) {
-            if (Test-Administrator) {
+
+        if (Test-Administrator -and (Test-Path 'C:\msys64\uninstall.exe')) {
+            Add-Log 'Sesion de administrador detectada: usando desinstalador nativo C:\msys64\uninstall.exe...'
+            $proc = Start-Process 'C:\msys64\uninstall.exe' -ArgumentList 'pr', '--confirm-command' -PassThru -Wait
+            if ($proc.ExitCode -ne 0 -or (Test-Path $bashPath)) {
+                Add-Log 'Abriendo asistente visual de desinstalacion de MSYS2...'
+                $proc = Start-Process 'C:\msys64\uninstall.exe' -PassThru -Wait
+            }
+            $uninstalledMsys = -not (Test-Path $bashPath)
+        }
+
+        if (-not $uninstalledMsys -and $wingetCmd) {
+            try {
                 Invoke-Native $wingetCmd.Source @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--accept-source-agreements')
-            } else {
-                Add-Log 'Sesion estandar: solicitando autorizacion UAC de Windows...'
-                $proc = Start-Process $wingetCmd.Source -ArgumentList 'uninstall --id MSYS2.MSYS2 -e --accept-source-agreements' -Verb RunAs -PassThru -Wait
-                if ($proc.ExitCode -ne 0) {
-                    throw "winget uninstall finalizo con codigo ($($proc.ExitCode))."
+                $uninstalledMsys = $true
+            } catch {
+                $err = $_.Exception.Message
+                if ($err -match 'user scope cannot be uninstalled' -and (Test-Path 'C:\msys64\uninstall.exe')) {
+                    Add-Log 'Aviso: winget no permite desinstalar paquetes de usuario desde sesion de administrador.'
+                    Add-Log 'Ejecutando desinstalador nativo C:\msys64\uninstall.exe...'
+                    $proc = Start-Process 'C:\msys64\uninstall.exe' -ArgumentList 'pr', '--confirm-command' -PassThru -Wait
+                    if ($proc.ExitCode -ne 0 -or (Test-Path $bashPath)) {
+                        Add-Log 'Abriendo asistente de desinstalacion de MSYS2...'
+                        $proc = Start-Process 'C:\msys64\uninstall.exe' -PassThru -Wait
+                    }
+                    $uninstalledMsys = -not (Test-Path $bashPath)
+                } else {
+                    throw
                 }
             }
-        } elseif (Test-Path 'C:\msys64\uninstall.exe') {
+        } elseif (-not $uninstalledMsys -and (Test-Path 'C:\msys64\uninstall.exe')) {
             Add-Log 'Ejecutando desinstalador C:\msys64\uninstall.exe...'
-            $proc = Start-Process 'C:\msys64\uninstall.exe' -Verb RunAs -PassThru -Wait
-            if ($proc.ExitCode -ne 0 -and (Test-Path 'C:\msys64')) {
-                throw "Desinstalador de MSYS2 finalizo con codigo ($($proc.ExitCode))."
-            }
+            $proc = Start-Process 'C:\msys64\uninstall.exe' -PassThru -Wait
+            $uninstalledMsys = -not (Test-Path $bashPath)
         }
         Set-InstallerProgress 80 'retirando MSYS2'
         $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
