@@ -1197,13 +1197,18 @@ $uninstallButton.Add_Click({
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 120
 $timer.Add_Tick({
-    $graphics = $rainPanel.CreateGraphics()
-    $graphics.Clear($black)
-    $brush = New-Object System.Drawing.SolidBrush($darkGreen)
-    for ($i = 0; $i -lt 20; $i++) { $graphics.DrawString('01C++', $font, $brush, (12 + ($i * 40)), (($timer.Tag + ($i * 61)) % 430)) }
-    $timer.Tag = [int]$timer.Tag + 8
-    $brush.Dispose()
-    $graphics.Dispose()
+    if ($form.IsDisposed -or -not $rainPanel.IsHandleCreated -or $form.WindowState -eq 'Minimized') { return }
+    try {
+        $graphics = $rainPanel.CreateGraphics()
+        if ($null -ne $graphics) {
+            $graphics.Clear($black)
+            $brush = New-Object System.Drawing.SolidBrush($darkGreen)
+            for ($i = 0; $i -lt 20; $i++) { $graphics.DrawString('01C++', $font, $brush, (12 + ($i * 40)), (($timer.Tag + ($i * 61)) % 430)) }
+            $timer.Tag = [int]$timer.Tag + 8
+            $brush.Dispose()
+            $graphics.Dispose()
+        }
+    } catch { $null = $_ }
 })
 $timer.Tag = 0
 $timer.Start()
