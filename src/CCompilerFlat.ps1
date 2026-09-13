@@ -295,15 +295,18 @@ function Initialize-Example {
     New-Item -ItemType Directory -Force -Path $examplesDir | Out-Null
     Write-IfMissing (Join-Path $examplesDir '01_hola.c') @'
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(void) {
     printf("Hola, CCompilerFlat!\n");
-    printf("Tu compilador funciona correctamente.\n");
+    printf("Tu compilador funciona correctamente.\n\n");
+    system("pause");
     return 0;
 }
 '@
     Write-IfMissing (Join-Path $examplesDir '02_calculadora.c') @'
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(void) {
     double numero1;
@@ -312,18 +315,36 @@ int main(void) {
 
     printf("Escribe una operacion, por ejemplo 8 * 4: ");
     if (scanf("%lf %c %lf", &numero1, &operador, &numero2) != 3) {
-        printf("Entrada no valida.\n");
+        printf("Entrada no valida.\n\n");
+        system("pause");
         return 1;
     }
+
     switch (operador) {
-        case '+': printf("Resultado: %.2f\n", numero1 + numero2); break;
-        case '-': printf("Resultado: %.2f\n", numero1 - numero2); break;
-        case '*': printf("Resultado: %.2f\n", numero1 * numero2); break;
+        case '+':
+            printf("Resultado: %.2f\n\n", numero1 + numero2);
+            break;
+        case '-':
+            printf("Resultado: %.2f\n\n", numero1 - numero2);
+            break;
+        case '*':
+            printf("Resultado: %.2f\n\n", numero1 * numero2);
+            break;
         case '/':
-            if (numero2 == 0) { printf("No se puede dividir entre cero.\n"); return 1; }
-            printf("Resultado: %.2f\n", numero1 / numero2); break;
-        default: printf("Usa +, -, * o /.\n"); return 1;
+            if (numero2 == 0.0) {
+                printf("No se puede dividir entre cero.\n\n");
+                system("pause");
+                return 1;
+            }
+            printf("Resultado: %.2f\n\n", numero1 / numero2);
+            break;
+        default:
+            printf("Usa +, -, * o /.\n\n");
+            system("pause");
+            return 1;
     }
+
+    system("pause");
     return 0;
 }
 '@
@@ -336,18 +357,31 @@ int main(void) {
     int secreto;
     int intento;
     int turnos = 0;
+
     srand((unsigned int)time(NULL));
     secreto = (rand() % 100) + 1;
     printf("JUEGO: ADIVINA EL NUMERO\n");
-    printf("Estoy pensando en un numero del 1 al 100.\n");
+    printf("Estoy pensando en un numero del 1 al 100.\n\n");
+
     do {
         printf("Intento: ");
-        if (scanf("%d", &intento) != 1) { printf("Entrada no valida.\n"); return 1; }
+        if (scanf("%d", &intento) != 1) {
+            int c;
+            printf("Entrada no valida. Introduce un numero entero.\n");
+            while ((c = getchar()) != '\n' && c != EOF) {}
+            continue;
+        }
         turnos++;
-        if (intento < secreto) printf("El numero es mayor.\n");
-        else if (intento > secreto) printf("El numero es menor.\n");
-        else printf("Ganaste en %d turnos!\n", turnos);
+        if (intento < secreto) {
+            printf("El numero es mayor.\n");
+        } else if (intento > secreto) {
+            printf("El numero es menor.\n");
+        } else {
+            printf("Ganaste en %d turnos!\n\n", turnos);
+        }
     } while (intento != secreto);
+
+    system("pause");
     return 0;
 }
 '@
@@ -360,20 +394,40 @@ int main(void) {
     int jugador;
     int computadora;
     const char *nombres[] = {"piedra", "papel", "tijera"};
+
     srand((unsigned int)time(NULL));
     printf("JUEGO: PIEDRA, PAPEL O TIJERA\n");
-    printf("0 = piedra, 1 = papel, 2 = tijera, -1 = salir\n");
+    printf("0 = piedra, 1 = papel, 2 = tijera, -1 = salir\n\n");
+
     while (1) {
         printf("Tu jugada: ");
-        if (scanf("%d", &jugador) != 1) { printf("Entrada no valida.\n"); return 1; }
-        if (jugador == -1) { printf("Hasta luego!\n"); break; }
-        if (jugador < 0 || jugador > 2) { printf("Elige 0, 1, 2 o -1.\n"); continue; }
+        if (scanf("%d", &jugador) != 1) {
+            int c;
+            printf("Entrada no valida. Elige 0, 1, 2 o -1 para salir.\n\n");
+            while ((c = getchar()) != '\n' && c != EOF) {}
+            continue;
+        }
+        if (jugador == -1) {
+            printf("\nHasta luego!\n\n");
+            break;
+        }
+        if (jugador < 0 || jugador > 2) {
+            printf("Opcion invalida. Elige 0, 1, 2 o -1 para salir.\n\n");
+            continue;
+        }
+
         computadora = rand() % 3;
         printf("Tu: %s | Computadora: %s\n", nombres[jugador], nombres[computadora]);
-        if (jugador == computadora) printf("Empate.\n");
-        else if ((jugador + 1) % 3 == computadora) printf("Gana la computadora.\n");
-        else printf("Ganaste!\n");
+        if (jugador == computadora) {
+            printf("Resultado: Empate.\n\n");
+        } else if ((jugador + 1) % 3 == computadora) {
+            printf("Resultado: Gana la computadora.\n\n");
+        } else {
+            printf("Resultado: Ganaste!\n\n");
+        }
     }
+
+    system("pause");
     return 0;
 }
 '@
