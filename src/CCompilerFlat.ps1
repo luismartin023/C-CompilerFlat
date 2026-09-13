@@ -376,6 +376,187 @@ function Test-VSCodeConfiguredIn {
     return $true
 }
 
+function Set-VSCodeGlobalConfiguration {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    $codeUserDir = Join-Path $env:APPDATA 'Code\User'
+    if (-not $PSCmdlet.ShouldProcess($codeUserDir, 'Configurar tareas globales de VS Code')) { return }
+    if (-not (Test-Path $codeUserDir)) {
+        New-Item -ItemType Directory -Force -Path $codeUserDir | Out-Null
+    }
+    $globalTasksPath = Join-Path $codeUserDir 'tasks.json'
+    $tasksJson = @'
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "C/C++: gcc.exe build active file (Global)",
+      "command": "__GCC_PATH__",
+      "args": ["-Wall", "-Wextra", "-g", "${file}", "-o", "${fileDirname}\\${fileBasenameNoExtension}.exe"],
+      "options": {"cwd": "${fileDirname}", "env": {"PATH": "__UCRT_BIN__;__MSYS_BIN__;${env:PATH}"}},
+      "problemMatcher": ["$gcc"],
+      "presentation": {"echo": false, "reveal": "silent", "focus": false, "panel": "shared", "showReuseMessage": false, "clear": true},
+      "group": {"kind": "build", "isDefault": true}
+    }
+  ]
+}
+'@
+    $tasksJson = $tasksJson.Replace('__GCC_PATH__', $gccPath.Replace('\', '/')).Replace('__UCRT_BIN__', $ucrtBin.Replace('\', '/')).Replace('__MSYS_BIN__', $usrBin.Replace('\', '/'))
+    [System.IO.File]::WriteAllText($globalTasksPath, $tasksJson, [System.Text.Encoding]::UTF8)
+    Add-Log "Configuracion global de VS Code aplicada en: $globalTasksPath"
+}
+
+function Test-VSCodeGlobalConfigured {
+    $globalTasksPath = Join-Path $env:APPDATA 'Code\User\tasks.json'
+    if (-not (Test-Path $globalTasksPath)) { return $false }
+    $content = Get-Content $globalTasksPath -Raw -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrWhiteSpace($content)) { return $false }
+    return ($content -match 'C/C\+\+: gcc\.exe build active file')
+}
+
+function Remove-VSCodeGlobalConfiguration {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    $globalTasksPath = Join-Path $env:APPDATA 'Code\User\tasks.json'
+    if (Test-Path $globalTasksPath) {
+        if (-not $PSCmdlet.ShouldProcess($globalTasksPath, 'Retirar configuracion global de VS Code')) { return }
+        $content = Get-Content $globalTasksPath -Raw -ErrorAction SilentlyContinue
+        if ($content -match 'C/C\+\+: gcc\.exe build active file') {
+            Remove-Item $globalTasksPath -Force -ErrorAction SilentlyContinue
+            Add-Log 'Configuracion global de VS Code retirada.'
+        }
+    }
+}
+
+function Show-ConfigurationModal {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    if (-not $PSCmdlet.ShouldProcess('proyecto VS Code', 'Elegir modo de configuracion')) { return }
+    $configDialog = New-Object System.Windows.Forms.Form
+    $configDialog.Text = 'Modos de Configuracion - CCompilerFlat'
+    $configDialog.ClientSize = New-Object System.Drawing.Size(660, 500)
+    $configDialog.MinimumSize = New-Object System.Drawing.Size(620, 460)
+    $configDialog.AutoScaleMode = 'Dpi'
+    $configDialog.StartPosition = 'CenterParent'
+    $configDialog.BackColor = $black
+    $configDialog.ForeColor = $green
+    $configDialog.Font = $font
+    Set-WindowBranding $configDialog
+
+    $modalHeader = New-Object System.Windows.Forms.Label
+    $modalHeader.Text = 'CONFIGURACION DE VS CODE PARA C/C++'
+    $modalHeader.Location = New-Object System.Drawing.Point(24, 18)
+    $modalHeader.Size = New-Object System.Drawing.Size(610, 24)
+    $modalHeader.Font = New-Object System.Drawing.Font('Consolas', 11, [System.Drawing.FontStyle]::Bold)
+    $modalHeader.ForeColor = $green
+    $configDialog.Controls.Add($modalHeader)
+
+    $state = Get-InstallationState
+    $warningLabel = New-Object System.Windows.Forms.Label
+    $warningLabel.Location = New-Object System.Drawing.Point(24, 46)
+    $warningLabel.Size = New-Object System.Drawing.Size(610, 36)
+    $warningLabel.Font = New-Object System.Drawing.Font('Consolas', 9)
+    if (-not $state.CompilerReady) {
+        $warningLabel.Text = 'AVISO: El compilador GCC todavia no esta instalado. Primero debes instalar el kit completo con [ INSTALAR TODO ] para poder compilar.'
+        $warningLabel.ForeColor = [System.Drawing.Color]::FromArgb(255, 180, 50)
+    } else {
+        $warningLabel.Text = 'Elige como deseas configurar VS Code para compilar con GCC 16.1 UCRT64:'
+        $warningLabel.ForeColor = $lightGreen
+    }
+    $configDialog.Controls.Add($warningLabel)
+
+    $btnGlobal = New-Object System.Windows.Forms.Button
+    $btnGlobal.Text = '1. CONFIGURACION GLOBAL EN VS CODE (RECOMENDADO)'
+    $btnGlobal.Location = New-Object System.Drawing.Point(24, 90)
+    $btnGlobal.Size = New-Object System.Drawing.Size(610, 38)
+    $btnGlobal.FlatStyle = 'Flat'
+    $btnGlobal.FlatAppearance.BorderColor = $green
+    $btnGlobal.ForeColor = $green
+    $btnGlobal.BackColor = [System.Drawing.Color]::FromArgb(5, 35, 18)
+    $btnGlobal.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $btnGlobal.Add_Click({
+        Set-VSCodeGlobalConfiguration
+        Add-UcrtToUserPath
+        Update-InstallationControl
+        $configDialog.Close()
+        [System.Windows.Forms.MessageBox]::Show("Configuracion global de VS Code aplicada exitosamente.`r`n`r`nAhora cualquier archivo .c abierto en VS Code podra compilarse con GCC en cualquier carpeta de tu equipo sin crear archivos .vscode locales.", 'Configuracion global', 'OK', 'Information') | Out-Null
+    })
+    $configDialog.Controls.Add($btnGlobal)
+
+    $descGlobal = New-Object System.Windows.Forms.Label
+    $descGlobal.Text = 'Inyecta la tarea de compilacion a nivel de usuario en VS Code. Podras abrir y compilar cualquier archivo .c en CUALQUIER carpeta sin configurar nada mas.'
+    $descGlobal.Location = New-Object System.Drawing.Point(24, 132)
+    $descGlobal.Size = New-Object System.Drawing.Size(610, 34)
+    $descGlobal.Font = New-Object System.Drawing.Font('Consolas', 8)
+    $descGlobal.ForeColor = $darkGreen
+    $configDialog.Controls.Add($descGlobal)
+
+    $btnFolder = New-Object System.Windows.Forms.Button
+    $btnFolder.Text = '2. ELEGIR CARPETA DE PROYECTO (POR PROYECTO)'
+    $btnFolder.Location = New-Object System.Drawing.Point(24, 180)
+    $btnFolder.Size = New-Object System.Drawing.Size(610, 38)
+    $btnFolder.FlatStyle = 'Flat'
+    $btnFolder.FlatAppearance.BorderColor = $green
+    $btnFolder.ForeColor = $green
+    $btnFolder.BackColor = [System.Drawing.Color]::FromArgb(5, 35, 18)
+    $btnFolder.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $btnFolder.Add_Click({
+        $configDialog.Close()
+        Select-ProjectFolderAndConfigure
+    })
+    $configDialog.Controls.Add($btnFolder)
+
+    $descFolder = New-Object System.Windows.Forms.Label
+    $descFolder.Text = 'Abre el explorador de Windows para seleccionar una carpeta especifica (ej: ALGORITMO o una carpeta en el Escritorio) e inyectar la subcarpeta .vscode completa.'
+    $descFolder.Location = New-Object System.Drawing.Point(24, 222)
+    $descFolder.Size = New-Object System.Drawing.Size(610, 34)
+    $descFolder.Font = New-Object System.Drawing.Font('Consolas', 8)
+    $descFolder.ForeColor = $darkGreen
+    $configDialog.Controls.Add($descFolder)
+
+    $btnCurrent = New-Object System.Windows.Forms.Button
+    $btnCurrent.Text = '3. CONFIGURAR EN CARPETA ACTUAL DEL PROYECTO'
+    $btnCurrent.Location = New-Object System.Drawing.Point(24, 270)
+    $btnCurrent.Size = New-Object System.Drawing.Size(610, 38)
+    $btnCurrent.FlatStyle = 'Flat'
+    $btnCurrent.FlatAppearance.BorderColor = $green
+    $btnCurrent.ForeColor = $green
+    $btnCurrent.BackColor = [System.Drawing.Color]::FromArgb(5, 35, 18)
+    $btnCurrent.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $btnCurrent.Add_Click({
+        Set-VSCodeConfiguration -targetDir $projectDir
+        Add-UcrtToUserPath
+        Update-InstallationControl
+        $configDialog.Close()
+        [System.Windows.Forms.MessageBox]::Show("Configuracion .vscode creada exitosamente en la carpeta actual:`r`n$projectDir", 'Carpeta actual', 'OK', 'Information') | Out-Null
+    })
+    $configDialog.Controls.Add($btnCurrent)
+
+    $descCurrent = New-Object System.Windows.Forms.Label
+    $descCurrent.Text = "Inyecta la configuracion .vscode (tasks.json, launch.json, c_cpp_properties.json) directamente en: $projectDir"
+    $descCurrent.Location = New-Object System.Drawing.Point(24, 312)
+    $descCurrent.Size = New-Object System.Drawing.Size(610, 34)
+    $descCurrent.Font = New-Object System.Drawing.Font('Consolas', 8)
+    $descCurrent.ForeColor = $darkGreen
+    $configDialog.Controls.Add($descCurrent)
+
+    $btnCancel = New-Object System.Windows.Forms.Button
+    $btnCancel.Text = '[ CANCELAR ]'
+    $btnCancel.Location = New-Object System.Drawing.Point(24, 380)
+    $btnCancel.Size = New-Object System.Drawing.Size(150, 38)
+    $btnCancel.FlatStyle = 'Flat'
+    $btnCancel.FlatAppearance.BorderColor = $darkGreen
+    $btnCancel.ForeColor = $green
+    $btnCancel.BackColor = [System.Drawing.Color]::FromArgb(5, 20, 12)
+    $btnCancel.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $btnCancel.Add_Click({ $configDialog.Close() })
+    $configDialog.Controls.Add($btnCancel)
+
+    [void]$configDialog.ShowDialog($form)
+    $configDialog.Dispose()
+}
+
 function Select-ProjectFolderAndConfigure {
     [CmdletBinding(SupportsShouldProcess)]
     param()
@@ -759,6 +940,7 @@ function Remove-GeneratedVSCodeFile {
             else { Add-Log "Conservado $fileName personalizado" }
         }
     }
+    Remove-VSCodeGlobalConfiguration
 }
 
 function Get-InstallationState {
@@ -770,7 +952,8 @@ function Get-InstallationState {
     $localConfig = Test-VSCodeConfiguredIn -folder $projectDir
     $parentDir = Split-Path -Parent $projectDir
     $parentConfig = if ($parentDir) { Test-VSCodeConfiguredIn -folder $parentDir } else { $false }
-    $configurationReady = $localConfig -or $parentConfig
+    $globalConfig = Test-VSCodeGlobalConfigured
+    $configurationReady = $localConfig -or $parentConfig -or $globalConfig
     $compilerReady = (Test-Path $bashPath) -and (Test-Path $gccPath) -and (Test-Path $gdbPath)
 
     [pscustomobject]@{
@@ -783,6 +966,7 @@ function Get-InstallationState {
         Configuration = $configurationReady
         LocalConfiguration = $localConfig
         ParentConfiguration = $parentConfig
+        GlobalConfiguration = $globalConfig
         CoreReady = $compilerReady -and $configurationReady
     }
 }
@@ -801,7 +985,7 @@ function Update-InstallationControl {
     if ($state.CompilerReady -and $state.Configuration) {
         $installButton.Text = '[ ANALIZAR ESTADO ]'
         $installMenu.Text = 'Analizar estado'
-        $configLoc = if ($state.LocalConfiguration) { 'proyecto actual' } elseif ($state.ParentConfiguration) { 'carpeta padre' } else { 'externa' }
+        $configLoc = if ($state.LocalConfiguration) { 'proyecto actual' } elseif ($state.GlobalConfiguration) { 'global de usuario' } elseif ($state.ParentConfiguration) { 'carpeta padre' } else { 'externa' }
         $statusLabel.Text = "Estado: entorno completo; GCC 16.1 y VS Code listos ($configLoc)"
     } elseif ($state.CompilerReady) {
         $installButton.Text = '[ ANALIZAR ESTADO ]'
@@ -852,6 +1036,7 @@ $installButton.Add_Click({
         Set-InstallerProgress 60 'instalando GCC y GDB'
         Add-UcrtToUserPath
         Set-VSCodeConfiguration -targetDir $projectDir
+        Set-VSCodeGlobalConfiguration
         Initialize-Example
         Test-Example
         Set-InstallerProgress 80 'comprobando ejemplos y VS Code'
@@ -883,11 +1068,11 @@ $installButton.Add_Click({
     $installButton.Enabled = $true
 })
 
-$configButton.Add_Click({ Select-ProjectFolderAndConfigure })
+$configButton.Add_Click({ Show-ConfigurationModal })
 $openButton.Add_Click({ Start-Process 'explorer.exe' -ArgumentList $projectDir })
 $closeButton.Add_Click({ $form.Close() })
 $installMenu.Add_Click({ $installButton.PerformClick() })
-$configMenu.Add_Click({ Select-ProjectFolderAndConfigure })
+$configMenu.Add_Click({ Show-ConfigurationModal })
 $uninstallMenu.Add_Click({ $uninstallButton.PerformClick() })
 $tutorialMenu.Add_Click({ Show-Tutorial })
 $checkMenu.Add_Click({

@@ -29,11 +29,17 @@ Abre cualquiera de ellos en VS Code y pulsa **Ejecutar y depurar** (F5 o Ctrl+F5
 
 Tambien puedes usar **Comprobar ejemplos** en el menu del instalador para validar los cuatro archivos con GCC.
 
-## Configurar cualquier proyecto
+## Modos de configuracion de proyectos en VS Code
 
-CCompilerFlat separa la instalacion del compilador de la configuracion de proyectos:
-- Si abres una carpeta de trabajo distinta (por ejemplo la carpeta `ALGORITMO` o cualquier proyecto nuevo), usa el boton **[ CONFIGURAR PROYECTO ]** o el menu **Configurar proyecto**.
-- Un selector interactivo te permite elegir la carpeta donde inyectar `.vscode` (`tasks.json`, `launch.json`, `c_cpp_properties.json`).
+CCompilerFlat ofrece 3 modalidades para configurar VS Code segun tus necesidades mediante el boton **[ CONFIGURAR PROYECTO ]** o el menu superior:
+
+1. **Instalar kit completo (Compilador global + Carpeta actual)**:
+   - Al pulsar **[ INSTALAR TODO ]**, se instala el compilador GCC 16.1 UCRT64, se registra en el `PATH` global de Windows, se inyecta la configuracion `.vscode` en la carpeta actual y se aplica la configuracion global en VS Code. Es un kit integral indispensable para nuevos estudiantes.
+2. **Elegir carpeta de proyecto (Por proyecto)**:
+   - Abre el explorador de carpetas de Windows para elegir cualquier proyecto existente o nuevo (en el Escritorio, memoria USB, carpeta `ALGORITMO`, etc.) e inyectar la subcarpeta `.vscode` completa (`tasks.json`, `launch.json`, `c_cpp_properties.json`).
+3. **Configuracion global en VS Code (`%APPDATA%\Code\User\tasks.json`)**:
+   - Inyecta la tarea de compilacion a nivel de usuario en VS Code. Permite abrir cualquier archivo `.c` en CUALQUIER carpeta del equipo y compilarlo inmediatamente con GCC sin necesidad de crear archivos `.vscode` locales.
+
 
 ## Depurar
 
