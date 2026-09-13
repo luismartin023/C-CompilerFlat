@@ -449,30 +449,65 @@ No desactives Windows Defender ni crees exclusiones automaticas.
 function Show-About {
     $about = New-Object System.Windows.Forms.Form
     $about.Text = 'Acerca de CCompilerFlat'
-    $about.ClientSize = New-Object System.Drawing.Size(560, 390)
+    $about.ClientSize = New-Object System.Drawing.Size(650, 430)
+    $about.MinimumSize = New-Object System.Drawing.Size(600, 390)
+    $about.AutoScaleMode = 'Dpi'
     $about.StartPosition = 'CenterParent'
     $about.BackColor = $black
     $about.ForeColor = $green
     $about.Font = $font
-    $label = New-Object System.Windows.Forms.Label
-    $label.Text = "CCompilerFlat by LuisMartinPM`r`n`r`nLuis Martin Pena Mejia`r`nIngeniero de software dominicano`r`nPunta Cana, Republica Dominicana"
-    $label.Location = New-Object System.Drawing.Point(24, 22)
-    $label.Size = New-Object System.Drawing.Size(510, 120)
-    $label.ForeColor = $green
-    $about.Controls.Add($label)
-    $links = @(@('GitHub', $githubUrl), @('LinkedIn', $linkedinUrl), @('WhatsApp', $whatsappUrl), @('Correo: ' + $emailAddress, 'mailto:' + $emailAddress))
-    $y = 165
+    $aboutTitle = New-Object System.Windows.Forms.Label
+    $aboutTitle.Text = 'CCompilerFlat by LuisMartinPM'
+    $aboutTitle.Location = New-Object System.Drawing.Point(28, 24)
+    $aboutTitle.Size = New-Object System.Drawing.Size(590, 32)
+    $aboutTitle.Font = New-Object System.Drawing.Font('Consolas', 14, [System.Drawing.FontStyle]::Bold)
+    $aboutTitle.ForeColor = $green
+    $aboutTitle.Anchor = 'Top, Left, Right'
+    $about.Controls.Add($aboutTitle)
+
+    $aboutDescription = New-Object System.Windows.Forms.Label
+    $aboutDescription.Text = "Luis Martin Pena Mejia`r`nIngeniero de software dominicano`r`nPunta Cana, Republica Dominicana"
+    $aboutDescription.Location = New-Object System.Drawing.Point(28, 72)
+    $aboutDescription.Size = New-Object System.Drawing.Size(590, 76)
+    $aboutDescription.ForeColor = $green
+    $aboutDescription.Anchor = 'Top, Left, Right'
+    $about.Controls.Add($aboutDescription)
+
+    $links = @(
+        @('GitHub: github.com/luismartin023', $githubUrl),
+        @('LinkedIn: linkedin.com/in/luismartinpm-mkz-dev', $linkedinUrl),
+        @('WhatsApp: abrir chat', $whatsappUrl),
+        @('Correo: ' + $emailAddress, 'mailto:' + $emailAddress)
+    )
+    $y = 175
     foreach ($link in $links) {
         $linkLabel = New-Object System.Windows.Forms.LinkLabel
         $linkLabel.Text = $link[0]
         $linkLabel.Tag = $link[1]
         $linkLabel.Location = New-Object System.Drawing.Point(24, $y)
-        $linkLabel.Size = New-Object System.Drawing.Size(500, 25)
+        $linkLabel.Size = New-Object System.Drawing.Size(590, 28)
+        $linkLabel.AutoSize = $false
+        $linkLabel.Anchor = 'Top, Left, Right'
         $linkLabel.LinkColor = $green
-        $linkLabel.Add_LinkClicked({ Start-Process $this.Tag })
+        $linkLabel.ActiveLinkColor = [System.Drawing.Color]::White
+        $linkLabel.Add_LinkClicked({ Start-Process -FilePath $this.Tag })
         $about.Controls.Add($linkLabel)
-        $y += 28
+        $y += 32
     }
+
+    $closeAbout = New-Object System.Windows.Forms.Button
+    $closeAbout.Text = '[ CERRAR ]'
+    $closeAbout.Location = New-Object System.Drawing.Point(28, 350)
+    $closeAbout.Size = New-Object System.Drawing.Size(150, 40)
+    $closeAbout.FlatStyle = 'Flat'
+    $closeAbout.FlatAppearance.BorderColor = $darkGreen
+    $closeAbout.FlatAppearance.MouseOverBackColor = [System.Drawing.Color]::FromArgb(0, 110, 55)
+    $closeAbout.FlatAppearance.MouseDownBackColor = [System.Drawing.Color]::FromArgb(0, 210, 90)
+    $closeAbout.ForeColor = $green
+    $closeAbout.BackColor = [System.Drawing.Color]::FromArgb(5, 20, 12)
+    $closeAbout.Anchor = 'Bottom, Left'
+    $closeAbout.Add_Click({ $about.Close() })
+    $about.Controls.Add($closeAbout)
     [void]$about.ShowDialog($form)
     $about.Dispose()
 }
