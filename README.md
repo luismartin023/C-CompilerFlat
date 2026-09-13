@@ -2,6 +2,16 @@
 
 Instalador grafico para preparar Windows para compilar y depurar proyectos C/C++ desde Visual Studio Code.
 
+![1789274044450](image/README/1789274044450.jpg)
+
+## Video Tutorial
+
+Mira el paso a paso completo en YouTube para instalar y configurar C/C++ en un solo clic:
+
+[![Tutorial de CCompilerFlat en YouTube](https://img.youtube.com/vi/JPBXjO8Pm9M/hqdefault.jpg)](https://www.youtube.com/watch?v=JPBXjO8Pm9M)
+
+> 📺 **Ver en YouTube:** [Cómo Configurar C y C++ en Visual Studio Code en 1 Clic (2026) | CCompilerFlat](https://youtu.be/JPBXjO8Pm9M?si=0jJ8Cc6dWjMxGC2M)
+
 ## Que instala
 
 - MSYS2.

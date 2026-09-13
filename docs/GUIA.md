@@ -1,5 +1,10 @@
 # Guia de uso
 
+## Video Tutorial en YouTube
+
+Si prefieres seguir la explicacion paso a paso en video:
+- 📺 **Tutorial oficial:** [Cómo Configurar C y C++ en Visual Studio Code en 1 Clic (2026)](https://youtu.be/JPBXjO8Pm9M?si=0jJ8Cc6dWjMxGC2M)
+
 ## Instalar las herramientas
 
 Ejecuta `CCompilerFlat.bat` y selecciona **Instalar**. La app instala el compilador y crea la configuracion local de VS Code sin cambiar el `PATH` global.
