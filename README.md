@@ -14,8 +14,8 @@ Instalador grafico para preparar Windows para compilar y depurar proyectos C/C++
 ## Instalacion rapida
 
 1. Descarga o clona este repositorio.
-2. Opcionalmente ejecuta `Preparar-CCompilerFlat.bat` para instalar PSScriptAnalyzer, revisar el script y abrir la app.
-3. Para uso normal, ejecuta `CCompilerFlat.bat` directamente.
+2. Ejecuta `Verificar-CCompilerFlat.bat` para revisar el proyecto.
+3. Ejecuta `CCompilerFlat.bat` para abrir la app.
 4. Pulsa **INSTALAR TODO**.
 5. Abre tu carpeta de proyecto en VS Code.
 6. Abre un archivo `.c` y pulsa **Ejecutar y depurar**.
@@ -27,7 +27,6 @@ C-CompilerFlat/
 |- CCompilerFlat.bat              # Entrada normal para usuarios
 |- Verificar-CCompilerFlat.bat    # Revisa toda la instalacion
 |- src/CCompilerFlat.ps1          # Aplicacion grafica principal
-|- Preparar-CCompilerFlat.bat      # Revisa el codigo y abre la app
 |- tools/                          # Herramientas internas de mantenimiento
 |  |- Preparar-PSScriptAnalyzer.ps1
 |  `- Verificar-CCompilerFlat.ps1
@@ -38,13 +37,13 @@ C-CompilerFlat/
 `- SECURITY.md
 ```
 
-Hay dos flujos intencionales en la raiz: `CCompilerFlat.bat` para usar la app y `Verificar-CCompilerFlat.bat` para ejecutar todas las comprobaciones. `Preparar-CCompilerFlat.bat` se conserva como alias compatible: ejecuta la misma verificacion y abre la app si todo pasa. El script de la app vive en `src/` y no se duplica.
+Hay dos flujos intencionales en la raiz: `CCompilerFlat.bat` para usar la app y `Verificar-CCompilerFlat.bat` para ejecutar todas las comprobaciones. El script de la app vive en `src/` y no se duplica.
 
 La instalacion puede pedir permisos de Windows para instalar MSYS2. El script no modifica el `PATH` del sistema.
 
 CCompilerFlat no obliga a ejecutar toda la aplicación como administrador. En una cuenta estándar, `winget` muestra UAC solo si Windows necesita elevar la instalación; si el usuario rechaza UAC, la app informa el motivo y no continúa como si hubiera terminado correctamente.
 
-PSScriptAnalyzer es una herramienta opcional de desarrollo; no es necesaria para ejecutar el instalador. `Preparar-CCompilerFlat.bat` la instala en el perfil del usuario, analiza `src\CCompilerFlat.ps1` y no eleva permisos por su cuenta.
+PSScriptAnalyzer es una herramienta opcional de desarrollo; no es necesaria para ejecutar el instalador. `Verificar-CCompilerFlat.bat` la instala en el perfil del usuario y analiza todos los scripts sin elevar permisos por su cuenta.
 
 La configuracion de VS Code incorpora temporalmente `C:\msys64\ucrt64\bin` y `C:\msys64\usr\bin` solo para compilar y depurar, de modo que GCC encuentre sus DLL sin cambiar las variables globales de Windows.
 
@@ -77,4 +76,4 @@ Para revisar sintaxis, archivos requeridos y compilacion de los ejemplos, ejecut
 powershell -ExecutionPolicy Bypass -File tools\Verificar-CCompilerFlat.ps1
 ```
 
-Tambien puedes ejecutar `Verificar-CCompilerFlat.bat` con doble clic. El menu **Desinstalar** y el apartado **Acerca de** estan dentro de la app principal; el preparador abre esa misma app despues del analisis.
+Tambien puedes ejecutar `Verificar-CCompilerFlat.bat` con doble clic. El menu **Desinstalar** y el apartado **Acerca de** estan dentro de la app principal.

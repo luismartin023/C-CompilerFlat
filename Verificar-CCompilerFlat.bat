@@ -17,4 +17,3 @@ if errorlevel 1 (
 echo.
 echo CCompilerFlat funciona correctamente.
 pause
-if /I "%~1"=="abrir" call "%~dp0CCompilerFlat.bat"

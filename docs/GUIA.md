@@ -6,9 +6,7 @@ Ejecuta `CCompilerFlat.bat` y selecciona **Instalar**. La app instala el compila
 
 La app muestra el progreso de instalacion del 0% al 100%. Si la sesion no es de administrador, `winget` puede mostrar una solicitud de UAC; debes aceptarla para instalar MSYS2 en su ubicacion predeterminada. La app no eleva permisos silenciosamente.
 
-Antes de abrir la app puedes ejecutar `Preparar-CCompilerFlat.bat`. Es un alias compatible que ejecuta la verificacion completa, instala PSScriptAnalyzer si hace falta, muestra cualquier warning y abre la app solo cuando todo esta limpio. Tambien puedes ejecutar directamente `Verificar-CCompilerFlat.bat` si solo quieres el diagnostico.
-
-Para una prueba completa sin abrir la interfaz, ejecuta `Verificar-CCompilerFlat.bat`. Comprueba archivos, sintaxis, PSScriptAnalyzer y compilacion de los cuatro ejemplos.
+Antes de abrir la app ejecuta `Verificar-CCompilerFlat.bat`. Comprueba archivos, sintaxis, PSScriptAnalyzer y compilacion de los cuatro ejemplos sin abrir la interfaz.
 
 ## Compilar un archivo C
 
@@ -37,7 +35,7 @@ Coloca un punto de interrupcion haciendo clic junto al numero de linea y pulsa *
 
 Desde el menu **Desinstalar**, confirma la operacion. El instalador retira MSYS2, GCC, GDB y la extension de C/C++. No elimina tus archivos fuente.
 
-El apartado **Acerca de** contiene la identidad del proyecto y los enlaces de contacto. El preparador no duplica estas opciones: despues del analisis abre la misma aplicacion principal.
+El apartado **Acerca de** contiene la identidad del proyecto y los enlaces de contacto.
 
 ## Problemas comunes
 

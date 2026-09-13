@@ -6,7 +6,6 @@ $env:PSModulePath = "$modulePath;$env:PSModulePath"
 
 $requiredFiles = @(
     'CCompilerFlat.bat',
-    'Preparar-CCompilerFlat.bat',
     'src\CCompilerFlat.ps1',
     'tools\Preparar-PSScriptAnalyzer.ps1',
     'docs\GUIA.md',
