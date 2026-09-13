@@ -216,16 +216,40 @@ function Invoke-Native([string]$filePath, [string[]]$arguments) {
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
     [void]$process.Start()
+    $errLines = New-Object System.Collections.Generic.List[string]
     while (-not $process.HasExited) {
-        if (-not $process.StandardOutput.EndOfStream) { Add-Log $process.StandardOutput.ReadLine() }
-        if (-not $process.StandardError.EndOfStream) { Add-Log $process.StandardError.ReadLine() }
+        if (-not $process.StandardOutput.EndOfStream) {
+            $line = $process.StandardOutput.ReadLine()
+            Add-Log $line
+            if ($line -match 'error|fail|privilege|denied|admin|warning|requier|bloquea') { $errLines.Add($line) }
+        }
+        if (-not $process.StandardError.EndOfStream) {
+            $line = $process.StandardError.ReadLine()
+            Add-Log $line
+            $errLines.Add($line)
+        }
         [System.Windows.Forms.Application]::DoEvents()
     }
     $output = $process.StandardOutput.ReadToEnd()
-    if ($output) { Add-Log $output.Trim() }
+    if ($output) {
+        Add-Log $output.Trim()
+        foreach ($l in ($output -split "`r?`n")) {
+            if ($l -match 'error|fail|privilege|denied|admin|warning|requier|bloquea') { $errLines.Add($l.Trim()) }
+        }
+    }
     $errors = $process.StandardError.ReadToEnd()
-    if ($errors) { Add-Log $errors.Trim() }
-    if ($process.ExitCode -ne 0) { throw "Command failed: $filePath ($($process.ExitCode))" }
+    if ($errors) {
+        Add-Log $errors.Trim()
+        foreach ($l in ($errors -split "`r?`n")) {
+            if (-not [string]::IsNullOrWhiteSpace($l)) { $errLines.Add($l.Trim()) }
+        }
+    }
+    if ($process.ExitCode -ne 0) {
+        $detail = if ($errLines.Count -gt 0) { ($errLines | Select-Object -Last 2) -join ' - ' } else { '' }
+        $msg = "Command failed: $filePath ($($process.ExitCode))"
+        if ($detail) { $msg += "`r`nDetalle: $detail" }
+        throw $msg
+    }
 }
 
 function Write-IfMissing([string]$path, [string]$content) {
@@ -241,19 +265,22 @@ function Get-DiagnosticRecommendation {
     if ([string]::IsNullOrWhiteSpace($errorMessage)) {
         return 'Revisa el registro de eventos para mas detalles o consulta el menu Ayuda / Tutorial.'
     }
-    if ($errorMessage -match 'code\.cmd') {
-        return 'VS Code esta en ejecucion o bloqueando archivos de extensiones. Cierra todas las ventanas de VS Code y reintenta la operacion.'
+    if ($errorMessage -match '-1978335107|admin|elevat|privilege|privilegio|elevacion|uac') {
+        return 'La instalacion o desinstalacion requiere permisos de Administrador de Windows (codigo -1978335107 / UAC). Ejecuta CCompilerFlat como Administrador (clic derecho > "Ejecutar como administrador") o autoriza la ventana UAC de Windows para permitir modificar C:\msys64.'
     }
-    if ($errorMessage -match 'winget|pacman|download|descarga|internet|conexion|0x80072ee7') {
-        return 'Fallo de red o descarga de paquetes. Comprueba tu conexion a internet, actualiza "App Installer" en la Microsoft Store y autoriza las solicitudes UAC.'
+    if ($errorMessage -match 'code\.cmd|cannot uninstall extension') {
+        return 'VS Code esta en ejecucion o bloqueando archivos de extensiones. Cierra todas las ventanas de VS Code y reintenta la operacion.'
     }
     if ($errorMessage -match 'access|denied|acceso denegado|permiso|bloqueado|defender|unauthorized|0x80070005|antivirus|virus') {
         return 'Windows Defender o tu antivirus bloqueo la accion. Revisa en "Seguridad de Windows > Proteccion contra virus y amenazas > Historial de proteccion" o desactiva temporalmente el "Control de acceso a carpetas".'
     }
+    if ($errorMessage -match 'winget|pacman|download|descarga|internet|conexion|0x80072ee7') {
+        return 'Fallo de red o descarga de paquetes. Comprueba tu conexion a internet, actualiza "App Installer" en la Microsoft Store y autoriza las solicitudes UAC.'
+    }
     if ($errorMessage -match '9009|not found|no se reconoce|no se encontro') {
         return 'Un comando del sistema o ejecutable no fue encontrado en el PATH. Asegurate de tener VS Code o winget correctamente instalados en Windows.'
     }
-    return 'Si el problema persiste, ejecuta CCompilerFlat como Administrador (clic derecho > Ejecutar como administrador) o consulta el menu Ayuda / Tutorial.'
+    return 'Si el problema persiste, ejecuta CCompilerFlat como Administrador (clic derecho > "Ejecutar como administrador") o consulta el menu Ayuda / Tutorial.'
 }
 
 function Set-VSCodeConfiguration {
@@ -886,6 +913,9 @@ $uninstallButton.Add_Click({
     Set-InstallerProgress 0 'preparando desinstalacion'
     try {
         Add-Log 'Iniciando desinstalacion...'
+        if (Get-Process Code -ErrorAction SilentlyContinue) {
+            Add-Log 'Aviso: VS Code esta abierto. Cierralo para asegurar la desinstalacion limpia de la extension.'
+        }
         $codeCmd = Get-Command code.cmd -ErrorAction SilentlyContinue
         if ($codeCmd) {
             try {
@@ -897,7 +927,21 @@ $uninstallButton.Add_Click({
         Set-InstallerProgress 40 'retirando extension de VS Code'
         $wingetCmd = Get-Command winget.exe -ErrorAction SilentlyContinue
         if ($wingetCmd) {
-            Invoke-Native $wingetCmd.Source @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--silent', '--accept-source-agreements')
+            if (Test-Administrator) {
+                Invoke-Native $wingetCmd.Source @('uninstall', '--id', 'MSYS2.MSYS2', '-e', '--accept-source-agreements')
+            } else {
+                Add-Log 'Sesion estandar: solicitando autorizacion UAC de Windows...'
+                $proc = Start-Process $wingetCmd.Source -ArgumentList 'uninstall --id MSYS2.MSYS2 -e --accept-source-agreements' -Verb RunAs -PassThru -Wait
+                if ($proc.ExitCode -ne 0) {
+                    throw "winget uninstall finalizo con codigo ($($proc.ExitCode))."
+                }
+            }
+        } elseif (Test-Path 'C:\msys64\uninstall.exe') {
+            Add-Log 'Ejecutando desinstalador C:\msys64\uninstall.exe...'
+            $proc = Start-Process 'C:\msys64\uninstall.exe' -Verb RunAs -PassThru -Wait
+            if ($proc.ExitCode -ne 0 -and (Test-Path 'C:\msys64')) {
+                throw "Desinstalador de MSYS2 finalizo con codigo ($($proc.ExitCode))."
+            }
         }
         Set-InstallerProgress 80 'retirando MSYS2'
         $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
