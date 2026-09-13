@@ -135,6 +135,8 @@ $closeButton = New-ActionButton '[ SALIR ]' 508 140
 $closeButton.Anchor = 'Bottom, Right'
 $uninstallButton = New-ActionButton '[ DESINSTALAR ]' 666 140
 $uninstallButton.Anchor = 'Bottom, Right'
+$uninstallButton.Visible = $false
+$uninstallButton.Enabled = $false
 $uninstallButton.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(180, 60, 60)
 $uninstallButton.FlatAppearance.MouseOverBackColor = [System.Drawing.Color]::FromArgb(110, 25, 25)
 $uninstallButton.FlatAppearance.MouseDownBackColor = [System.Drawing.Color]::FromArgb(220, 70, 70)
@@ -595,7 +597,21 @@ function Get-InstallationState {
         VsCode = [bool]$vsCodeCommand
         Extension = $extensionInstalled
         Configuration = $configurationReady
+        CoreReady = (Test-Path $bashPath) -and (Test-Path $gccPath) -and (Test-Path $gdbPath) -and $configurationReady
     }
+}
+
+function Update-InstallationControl {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+    if (-not $PSCmdlet.ShouldProcess('controles de instalacion', 'Actualizar estado')) { return }
+    $state = Get-InstallationState
+    $hasInstalledComponent = $state.Msys2 -or $state.Gcc -or $state.Gdb -or $state.Extension -or $state.Configuration
+    $uninstallButton.Visible = $hasInstalledComponent
+    $uninstallButton.Enabled = $hasInstalledComponent
+    if ($state.CoreReady) { $installButton.Text = '[ ANALIZAR ESTADO ]' }
+    else { $installButton.Text = '[ INSTALAR TODO ]' }
+    $statusLabel.Text = if ($state.CoreReady) { 'Estado: entorno detectado' } else { 'Estado: listo para instalar' }
 }
 
 $installButton.Add_Click({
@@ -640,6 +656,7 @@ $installButton.Add_Click({
         Add-Log 'INSTALACION COMPLETA. VS Code esta listo.'
         [System.Windows.Forms.MessageBox]::Show('Instalacion completa. VS Code esta listo.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
         Show-Tutorial
+        Update-InstallationControl
     } catch {
         Add-Log ('ERROR: ' + $_.Exception.Message)
         $statusLabel.Text = 'Estado: error; revisa el registro'
@@ -674,6 +691,7 @@ $uninstallButton.Add_Click({
         Set-InstallerProgress 100 'desinstalacion completa'
         Add-Log 'DESINSTALACION COMPLETA.'
         [System.Windows.Forms.MessageBox]::Show('Herramientas eliminadas.', 'CCompilerFlat', 'OK', 'Information') | Out-Null
+        Update-InstallationControl
     } catch { Add-Log ('ERROR: ' + $_.Exception.Message) }
     $installButton.Enabled = $true
     $uninstallButton.Enabled = $true
@@ -704,6 +722,8 @@ $openButton.BringToFront()
 $closeButton.BringToFront()
 $uninstallButton.BringToFront()
 $footer.BringToFront()
+
+Update-InstallationControl
 
 Add-Log 'CCompilerFlat by LuisMartinPM listo.'
 Add-Log 'Puedes abrir el Tutorial sin instalar nada.'
